@@ -374,10 +374,6 @@ public class FolderOpener implements PlugIn {
 					cal.pixelDepth = voxelDepth;
 					imp2.setCalibration(cal);
 				}
-				if (imp2.getType()==ImagePlus.GRAY16 || imp2.getType()==ImagePlus.GRAY32) {
-					imp2.getProcessor().setMinAndMax(min, max);
-					imp2.updateAndDraw();
-				}
 			}
 			if (imp2.getStackSize()==1) {
 				imp2.setProperty("Label", list[0]);
@@ -408,6 +404,7 @@ public class FolderOpener implements PlugIn {
 				options = options + " noMetaSort";
    			Recorder.recordCall("imp = FolderOpener.open(\""+directory+"\", \""+options+"\");");
 		}
+
 	}
 	
 	public static boolean useInfo(String info) {

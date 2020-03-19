@@ -47,7 +47,6 @@ public class PointToolOptions implements PlugIn, DialogListener {
 		if (isMacro) {
 			options = options.replace("selection=", "color=");
 			options = options.replace("marker=", "size=");
-			options = options.replace("type=Crosshair", "type=Cross");
 			Macro.setOptions(options);
 			legacyMacro = options.contains("auto-") || options.contains("add");
 		}

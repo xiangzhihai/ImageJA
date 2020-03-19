@@ -76,7 +76,15 @@ public class PlotWindow extends ImageWindow implements ActionListener, ItemListe
 
 	private Button list, data, more, live;
 	private PopupMenu dataPopupMenu, morePopupMenu;
+<<<<<<< HEAD
+<<<<<<< HEAD
 	private static final int NUM_MENU_ITEMS = 20; //how many menu items we have in total
+=======
+	private static final int NUM_MENU_ITEMS = 17; //how many menu items we have in total
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+	private static final int NUM_MENU_ITEMS = 17; //how many menu items we have in total
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	private MenuItem[] menuItems = new MenuItem[NUM_MENU_ITEMS];
 	private Label statusLabel;
 	private String userStatusText;
@@ -332,15 +340,28 @@ public class PlotWindow extends ImageWindow implements ActionListener, ItemListe
 	}
 
 	/** Names for popupMenu items. Update NUM_MENU_ITEMS at the top when adding new ones! */
+<<<<<<< HEAD
+<<<<<<< HEAD
 	private static int SAVE=0, COPY=1, COPY_ALL=2, LIST_SIMPLE=3, ADD_FROM_TABLE=4, ADD_FROM_PLOT=5, ADD_FIT=6, //data menu
 			SET_RANGE=7, PREV_RANGE=8, RESET_RANGE=9, FIT_RANGE=10,  //the rest is in the more menu
 			ZOOM_SELECTION=11, AXIS_OPTIONS=12, LEGEND=13, STYLE=14, TEMPLATE=15, RESET_PLOT=16,
 			FREEZE=17, HI_RESOLUTION=18, PROFILE_PLOT_OPTIONS=19;
+=======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+	private static int SAVE=0, COPY=1, COPY_ALL=2, ADD_FROM_PLOT=3,	ADD_FROM_TABLE=4, //data menu
+			SET_RANGE=5, PREV_RANGE=6, RESET_RANGE=7, FIT_RANGE=8,  //the rest is in the more menu
+			ZOOM_SELECTION=9, AXIS_OPTIONS=10, LEGEND=11, STYLE=12, RESET_PLOT=13,
+			FREEZE=14, HI_RESOLUTION=15, PROFILE_PLOT_OPTIONS=16;
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	//the following commands are disabled when the plot is frozen
-	private static int[] DISABLED_WHEN_FROZEN = new int[]{ADD_FROM_TABLE, ADD_FROM_PLOT, ADD_FIT,
-			SET_RANGE, PREV_RANGE, RESET_RANGE, FIT_RANGE, ZOOM_SELECTION, AXIS_OPTIONS, LEGEND, STYLE, RESET_PLOT};
+	private static int[] DISABLED_WHEN_FROZEN = new int[]{ADD_FROM_PLOT, ADD_FROM_TABLE, SET_RANGE, PREV_RANGE, RESET_RANGE,
+			FIT_RANGE, ZOOM_SELECTION, AXIS_OPTIONS, LEGEND, STYLE, RESET_PLOT};
 
-	/** Prepares and returns the popupMenu of the Data>> button */
+	/** Prepares and returns the popupMenu of the More>> button */
 	PopupMenu getDataPopupMenu() {
 		dataPopupMenu = new PopupMenu();
 		GUI.scalePopupMenu(dataPopupMenu);
@@ -349,9 +370,8 @@ public class PlotWindow extends ImageWindow implements ActionListener, ItemListe
 		menuItems[COPY_ALL] = addPopupItem(dataPopupMenu, "Copy All Data");
 		menuItems[LIST_SIMPLE] = addPopupItem(dataPopupMenu, "List (Simple Headings)");
 		dataPopupMenu.addSeparator();
-		menuItems[ADD_FROM_TABLE] = addPopupItem(dataPopupMenu, "Add from Table...");
 		menuItems[ADD_FROM_PLOT] = addPopupItem(dataPopupMenu, "Add from Plot...");
-		menuItems[ADD_FIT] = addPopupItem(dataPopupMenu, "Add Fit...");
+		menuItems[ADD_FROM_TABLE] = addPopupItem(dataPopupMenu, "Add from Table...");
 		return dataPopupMenu;
 	}
 
@@ -414,14 +434,20 @@ public class PlotWindow extends ImageWindow implements ActionListener, ItemListe
 			copyToClipboard(false);
 		else if (b==menuItems[COPY_ALL])
 			copyToClipboard(true);
+<<<<<<< HEAD
+<<<<<<< HEAD
 		else if (b==menuItems[LIST_SIMPLE])
 			showList(/*useLabels=*/false);
 		else if (b==menuItems[ADD_FROM_TABLE])
 			new PlotContentsDialog(plot, PlotContentsDialog.ADD_FROM_TABLE).showDialog(this);
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		else if (b==menuItems[ADD_FROM_PLOT])
 			new PlotContentsDialog(plot, PlotContentsDialog.ADD_FROM_PLOT).showDialog(this);
-		else if (b==menuItems[ADD_FIT])
-			new PlotContentsDialog(plot, PlotContentsDialog.ADD_FIT).showDialog(this);
+		else if (b==menuItems[ADD_FROM_TABLE])
+			new PlotContentsDialog(plot, PlotContentsDialog.ADD_FROM_TABLE).showDialog(this);
 		else if (b==menuItems[ZOOM_SELECTION]) {
 			if (imp!=null && imp.getRoi()!=null && imp.getRoi().isArea())
 				plot.zoomToRect(imp.getRoi().getBounds());
@@ -460,10 +486,7 @@ public class PlotWindow extends ImageWindow implements ActionListener, ItemListe
 		((CheckboxMenuItem)menuItems[FREEZE]).setState(frozen);
 		for (int i : DISABLED_WHEN_FROZEN)
 			menuItems[i].setEnabled(!frozen);
-		if (!PlotContentsDialog.tableWindowExists())
-			menuItems[ADD_FROM_TABLE].setEnabled(false);
-		if (plot.getDataObjectDesignations().length == 0)
-			menuItems[ADD_FIT].setEnabled(false);
+				menuItems[ADD_FROM_TABLE].setEnabled(PlotContentsDialog.tableWindowExists());
 	}
 
 	/** Called if the user activates/deactivates a CheckboxMenuItem */
@@ -525,11 +548,37 @@ public class PlotWindow extends ImageWindow implements ActionListener, ItemListe
 		} else if (rangeArrowsVisible)
 			hideRangeArrows();
 
+<<<<<<< HEAD
 		if (statusText == null)
 			statusText = userStatusText != null ? userStatusText : plot.getCoordinates(x, y);
 		if (statusLabel != null)
 			statusLabel.setText(statusText);
 	}
+=======
+        //arrows for modifying the plot range
+        if (x < plot.leftMargin || y > plot.topMargin + plot.frameHeight) {
+            if (!rangeArrowsVisible && !plot.isFrozen())
+                showRangeArrows();
+            if (activeRangeArrow == 8)//it's the 'R' icon
+                coordinates.setText("Reset Range");
+            if (activeRangeArrow >= 0 && !rangeArrowRois[activeRangeArrow].contains(x, y)) {
+                rangeArrowRois[activeRangeArrow].setFillColor(Color.GRAY);
+                ic.repaint();			//de-highlight arrow where cursor has moved out
+                activeRangeArrow = -1;
+            }
+            if (activeRangeArrow < 0) { //highlight arrow below cursor (if any)
+                int i = getRangeArrowIndex(x, y);
+                if (i >= 0) {			//we have an arrow at cursor position
+
+                    rangeArrowRois[i].setFillColor(Color.RED);
+                    activeRangeArrow = i;
+                    ic.repaint();
+                }
+            }
+        } else if (rangeArrowsVisible)
+            hideRangeArrows();
+    }
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 
 	/** Called by PlotCanvas */
 	void mouseExited(MouseEvent e) {
@@ -573,7 +622,15 @@ public class PlotWindow extends ImageWindow implements ActionListener, ItemListe
         if (imp == null)
             return;
         hideRangeArrows(); //in case we have old arrows from a different plot size or so
+<<<<<<< HEAD
+<<<<<<< HEAD
         rangeArrowRois = new Roi[4 * 2 + 2 + 4 + 2]; //4 arrows per axis, + 'Reset' and 'Fit All' icons, + 4 numerical input boxes + 2 axes
+=======
+        rangeArrowRois = new Roi[4 * 2 + 1]; //4 arrows per axis plus 1 'Reset' icon
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+        rangeArrowRois = new Roi[4 * 2 + 1]; //4 arrows per axis plus 1 'Reset' icon
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
         int i = 0;
         int height = imp.getHeight();
         int arrowH = plot.topMargin < 14 ? 6 : 8; //height of arrows and distance between them; base is twice that value
@@ -594,10 +651,9 @@ public class PlotWindow extends ImageWindow implements ActionListener, ItemListe
         }
         Font theFont = new Font("SansSerif", Font.BOLD, 13);
 
-        TextRoi txtRoi = new TextRoi(1, height - 19, "\u2009R\u2009", theFont);  //thin spaces to make roi slightly wider
+        TextRoi txtRoi = new TextRoi(2, height - 20, 20, 18, " R ", theFont);
         rangeArrowRois[8] = txtRoi;
-        TextRoi txtRoi2 = new TextRoi(20, height - 19, "\u2009F\u2009", theFont);
-        rangeArrowRois[9] = txtRoi2;
+<<<<<<< HEAD
 
 		rangeArrowRois[10] = new Roi(plot.leftMargin - arrowH/2 + 1, height - 5 * arrowH / 2, arrowH - 2, arrowH * 2);//numerical box left
 		rangeArrowRois[11] = new Roi(plot.leftMargin + plot.frameWidth - arrowH/2 + 1, height - 5 * arrowH / 2, arrowH - 2, arrowH * 2);//numerical box right
@@ -612,16 +668,30 @@ public class PlotWindow extends ImageWindow implements ActionListener, ItemListe
 				rightMargin - leftMargin + 1, 2*arrowH);
         rangeArrowRois[15] = new Roi(leftMargin-2*arrowH-2, topMargin,  // area to click for y axis options
 				2*arrowH, bottomMargin - topMargin + 1);
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 
         Overlay ovly = imp.getOverlay();
         if (ovly == null)
             ovly = new Overlay();
         for (Roi roi : rangeArrowRois) {
+<<<<<<< HEAD
+<<<<<<< HEAD
             if (roi instanceof PolygonRoi)
                    roi.setFillColor(inactiveRangeArrowColor);
 			else if (roi instanceof TextRoi) {
                 roi.setStrokeColor(Color.WHITE);
                 roi.setFillColor(inactiveRangeArrowColor);
+=======
+            if (roi instanceof TextRoi) {
+                txtRoi.setStrokeColor(Color.WHITE);
+                txtRoi.setFillColor(Color.GRAY);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+            if (roi instanceof TextRoi) {
+                txtRoi.setStrokeColor(Color.WHITE);
+                txtRoi.setFillColor(Color.GRAY);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
             } else
                 roi.setFillColor(inactiveRangeRectColor); //transparent gray for single number boxes and axis range
             ovly.add(roi);
@@ -868,9 +938,17 @@ public class PlotWindow extends ImageWindow implements ActionListener, ItemListe
 		while (true) {
 			IJ.wait(50);	//delay to make sure the roi has been updated
 			Plot plot = plotMaker!=null?plotMaker.getPlot():null;
+<<<<<<< HEAD
+<<<<<<< HEAD
 			if (doUpdate && plot!=null && plot.getNumPlotObjects()>0) {
 				plot.useTemplate(this.plot, this.plot.templateFlags | Plot.COPY_SIZE | Plot.COPY_LABELS | Plot.COPY_AXIS_STYLE |
 						Plot.COPY_CONTENTS_STYLE | Plot.COPY_LEGEND | Plot.COPY_EXTRA_OBJECTS);
+=======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+			if (doUpdate && plot!=null) {
+				plot.useTemplate(this.plot, this.plot.templateFlags);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 				plot.setPlotMaker(plotMaker);
 				this.plot = plot;
 				((PlotCanvas)ic).setPlot(plot);

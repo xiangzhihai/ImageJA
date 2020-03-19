@@ -1469,6 +1469,8 @@ public class ResultsTable implements Cloneable {
 		((TextWindow)frame).getTextPanel().setSelection(index, index);
     	return true;	
     }
+<<<<<<< HEAD
+<<<<<<< HEAD
     	
 	/** Sorts this table on the specified column, with string support.
 	 * Author: 'mountain_man', 8 April 2019
@@ -1541,5 +1543,9 @@ public class ResultsTable implements Cloneable {
 			return  (dValue < e.dValue) ? -1 : ( (dValue > e.dValue) ? 1 : 0 );
 		}
 	}
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		
 }

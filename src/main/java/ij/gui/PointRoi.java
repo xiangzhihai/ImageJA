@@ -13,10 +13,10 @@ import java.awt.event.KeyEvent;
 import java.util.*;
 import java.awt.geom.*;
 
-/** This class represents a collection of points that can be associated with counters.
- * @see <a href="http://wsr.imagej.net/macros/js/PointProperties.js">PointProperties.js</a>
-*/
+/** This class represents a collection of points. */
 public class PointRoi extends PolygonRoi {
+<<<<<<< HEAD
+<<<<<<< HEAD
 	public static final String[] sizes = {"Tiny", "Small", "Medium", "Large", "Extra Large", "XXL", "XXXL"};
 	public static final String[] types = {"Hybrid", "Cross", "Dot", "Circle"};
 	public static final int HYBRID=0, CROSS=1, CROSSHAIR=1, DOT=2, CIRCLE=3;
@@ -24,6 +24,20 @@ public class PointRoi extends PolygonRoi {
 	private static final String SIZE_KEY = "point.size";
 	private static final String CROSS_COLOR_KEY = "point.cross.color";
 	private static final int TINY=1, SMALL=3, MEDIUM=5, LARGE=7, EXTRA_LARGE=11, XXL=17, XXXL=25;
+=======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+	public static final String[] sizes = {"Tiny", "Small", "Medium", "Large", "Extra Large"};
+	public static final String[] types = {"Hybrid", "Crosshair", "Dot", "Circle"};
+	private static final String TYPE_KEY = "point.type";
+	private static final String SIZE_KEY = "point.size";
+	private static final String CROSS_COLOR_KEY = "point.cross.color";
+	private static final int TINY=1, SMALL=3, MEDIUM=5, LARGE=7, EXTRA_LARGE=11;
+	private static final int HYBRID=0, CROSSHAIR=1, DOT=2, CIRCLE=3;
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	private static final BasicStroke twoPixelsWide = new BasicStroke(2);
 	private static final BasicStroke threePixelsWide = new BasicStroke(3);
 	private static final BasicStroke fivePixelsWide = new BasicStroke(5);
@@ -50,9 +64,17 @@ public class PointRoi extends PolygonRoi {
 	private boolean promptBeforeDeleting;
 	private boolean promptBeforeDeletingCalled;
 	private int nMarkers;
+<<<<<<< HEAD
+<<<<<<< HEAD
 	private boolean addToOverlay;
 	public static PointRoi savedPoints;
 		
+=======
+	
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+	
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	static {
 		setDefaultType((int)Prefs.get(TYPE_KEY, HYBRID));
 		setDefaultSize((int)Prefs.get(SIZE_KEY, 1));
@@ -82,12 +104,6 @@ public class PointRoi extends PolygonRoi {
 		this(ox, oy, ox.length);
 	}
 
-	/** Creates a new PointRoi using the specified coordinate arrays and options. */
-	public PointRoi(float[] ox, float[] oy, String options) {
-		this(ox, oy, ox.length);
-		setOptions(options);
-	}
-
 	/** Creates a new PointRoi from a FloatPolygon. */
 	public PointRoi(FloatPolygon poly) {
 		this(poly.xpoints, poly.ypoints, poly.npoints);
@@ -98,6 +114,8 @@ public class PointRoi extends PolygonRoi {
 		this(itof(poly.xpoints), itof(poly.ypoints), poly.npoints);
 	}
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 	/** Creates a new PointRoi using the specified coordinates and options. */
 	public PointRoi(double ox, double oy, String options) {
 		super(makeXorYArray(ox, null, false), makeXorYArray(oy, null, true), 1, POINT);
@@ -106,6 +124,10 @@ public class PointRoi extends PolygonRoi {
 		setOptions(options);
 	}
 
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	/** Creates a new PointRoi using the specified offscreen int coordinates. */
 	public PointRoi(int ox, int oy) {
 		super(makeXorYArray(ox, null, false), makeXorYArray(oy, null, true), 1, POINT);
@@ -139,6 +161,8 @@ public class PointRoi extends PolygonRoi {
 		setCounter(Toolbar.getMultiPointMode()?defaultCounter:0);
 		incrementCounter(imp);
 		enlargeArrays(50);
+<<<<<<< HEAD
+<<<<<<< HEAD
 		if (Recorder.record) {
 			String add = Prefs.pointAddToOverlay?" add":"";
 			String options = sizes[convertSizeToIndex(size)]+" "+Colors.colorToString(getColor())+" "+types[type]+add;
@@ -164,6 +188,14 @@ public class PointRoi extends PolygonRoi {
 		else if (options.contains("circle")) type=CIRCLE;
 		setStrokeColor(Colors.getColor(options,Roi.getColor()));
 		addToOverlay =  options.contains("add");
+=======
+		if (Recorder.record && !Recorder.scriptMode()) 
+			Recorder.record("makePoint", x, y);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+		if (Recorder.record && !Recorder.scriptMode()) 
+			Recorder.record("makePoint", x, y);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	}
 	
 	static float[] itof(int[] arr) {
@@ -253,7 +285,7 @@ public class PointRoi extends PolygonRoi {
 		}
 		if (nCounters>1 && counters!=null && n<=counters.length)
 			color = getColor(counters[n-1]);
-		if (type==HYBRID || type==CROSS) {
+		if (type==HYBRID || type==CROSSHAIR) {
 			if (type==HYBRID)
 				g.setColor(Color.white);
 			else {
@@ -267,7 +299,7 @@ public class PointRoi extends PolygonRoi {
 			g.drawLine(x-(size+2), y, x+size+2, y);
 			g.drawLine(x, y-(size+2), x, y+size+2);
 		}
-		if (type!=CROSS && size>SMALL)
+		if (type!=CROSSHAIR && size>SMALL)
 			g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		if (type==HYBRID || type==DOT) { 
 			if (!colorSet) {
@@ -405,44 +437,6 @@ public class PointRoi extends PolygonRoi {
 			displayCounts();
 	}
 	
-	/** Returns the index of the current counter. */
-	public int getCounter() {
-		return counter;
-	}
-
-	/** Returns the count associated with the specified counter index.
-	 * @see #getLastCounter
-	 * @see <a href="http://wsr.imagej.net/macros/js/PointProperties.js">PointProperties.js</a>
-	 */
-	public int getCount(int counter) {
-		if (counter==0 && counters==null)
-			return nPoints;
-		else
-			return counts[counter];
-	}
-	
-	/** Returns the index of the last counter. */
-	public int getLastCounter() {
-		return nCounters - 1;
-	}
-
-	/** Returns the number of counters. */
-	public int getNCounters() {
-		int n = 0;
-		for (int counter=0; counter<nCounters; counter++) {
-			if (getCount(counter)>0) n++;
-		}
-		return n;
-	}
-	
-	/** Returns the counter assocated with the specified point. */
-	public int getCounter(int index) {
-		if (counters==null || index>=counters.length)
-			return 0;
-		else
-			return counters[index];
-	}
-
 	public void resetCounters() {
 		for (int i=0; i<counts.length; i++)
 			counts[i] = 0;
@@ -521,13 +515,13 @@ public class PointRoi extends PolygonRoi {
 		return defaultType;
 	}
 	
-	/** Sets the point type (0=hybrid, 1=cross, 2=dot, 3=circle). */
+	/** Sets the point type (0=hybrid, 1=crosshair, 2=dot, 3=circle). */
 	public void setPointType(int type) {
 		if (type>=0 && type<types.length)
 			this.type = type;
 	}
 
-	/** Returns the point type (0=hybrid, 1=cross, 2=dot, 3=circle). */
+	/** Returns the point type (0=hybrid, 1=crosshair, 2=dot, 3=circle). */
 	public int getPointType() {
 		return type;
 	}
@@ -587,6 +581,15 @@ public class PointRoi extends PolygonRoi {
 		return SMALL;
 	}
 
+	/** Deprecated */
+	public static void setDefaultCrossColor(Color color) {
+	}
+	
+	/** Deprecated */
+	public static Color getDefaultCrossColor() {
+		return null;
+	}
+
 	/** Always returns true. */
 	public boolean subPixelResolution() {
 		return true;
@@ -604,12 +607,31 @@ public class PointRoi extends PolygonRoi {
 		return null;
 	}
 
+	public String toString() {
+		if (nPoints>1)
+			return ("Roi[Points, count="+nPoints+"]");
+		else
+			return ("Roi[Point, x="+x+", y="+y+"]");
+	}
+	
 	public void setCounter(int counter) {
 		this.counter = counter;
 		if (counter>nCounters-1 && nCounters<MAX_COUNTERS)
 			nCounters = counter + 1;
 	}
 
+	public int getCounter() {
+		return counter;
+	}
+
+	public int getNCounters() {
+		int n = 0;
+		for (int counter=0; counter<nCounters; counter++) {
+			if (getCount(counter)>0) n++;
+		}
+		return n;
+	}
+	
 	public boolean promptBeforeDeleting() {
 	    if (promptBeforeDeletingCalled && getNCounters()==1)
 	    	return promptBeforeDeleting;
@@ -626,10 +648,34 @@ public class PointRoi extends PolygonRoi {
 		defaultCounter = counter;
 	}
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 	/** Returns an array containing for each point:
 	 *  The counter number (0-100) in the lower 8 bits, and the slice number
 	 *  (or 0, if the point appears on all slices) in the higher 24 bits.
 	 *  Used when writing a Roi to file (RoiEncoder) */
+=======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+	public int getCount(int counter) {
+		if (counter==0 && counters==null)
+			return nPoints;
+		else
+			return counts[counter];
+	}
+	
+	/** Returns the counter assocated with the specified point. */
+	public int getCounter(int index) {
+		if (counters==null || index>=counters.length)
+			return 0;
+		else
+			return counters[index];
+	}
+
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	public int[] getCounters() {
 		if (nPoints>65535)
 			return null;
@@ -913,17 +959,6 @@ public class PointRoi extends PolygonRoi {
 		return counterInfo;
 	}
 	
-	public boolean addToOverlay() {
-		return addToOverlay;
-	}
-
-	public String toString() {
-		if (nPoints>1)
-			return ("Roi[Points, count="+nPoints+"]");
-		else
-			return ("Roi[Point, x="+x+", y="+y+"]");
-	}
-	
 	/** @deprecated */
 	public void setHideLabels(boolean hideLabels) {
 		this.showLabels = !hideLabels;
@@ -936,15 +971,6 @@ public class PointRoi extends PolygonRoi {
 	/** @deprecated */
 	public static String getDefaultMarkerSize() {
 		return sizes[defaultSize];
-	}
-	
-	/** Deprecated */
-	public static void setDefaultCrossColor(Color color) {
-	}
-	
-	/** Deprecated */
-	public static Color getDefaultCrossColor() {
-		return null;
 	}
 
 }

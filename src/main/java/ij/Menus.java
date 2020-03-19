@@ -299,7 +299,6 @@ public class Menus {
 		addExample(submenu, "Bar Charts", "Bar_Charts_.ijm");
 		addExample(submenu, "Shapes", "Plot_Shapes_.ijm");
 		addExample(submenu, "Plot Styles", "Plot_Styles_.ijm");
-		addExample(submenu, "Random Data", "Random_Data_.ijm");
 		submenu.addActionListener(listener);
 		menu.add(submenu);
 		
@@ -337,9 +336,15 @@ public class Menus {
 		addExample(submenu, "Arrow Plot", "Arrow_Plot.js");
 		addExample(submenu, "Dynamic Plot", "Dynamic_Plot.js");
 		addExample(submenu, "Plot Styles", "Plot_Styles.js");
+<<<<<<< HEAD
+<<<<<<< HEAD
 		addExample(submenu, "Plot Random Data", "Plot_Random_Data.js");
 		addExample(submenu, "Histogram Plots", "Histogram_Plots.js");
 		addExample(submenu, "JPEG Quality Plot", "JPEG_Quality_Plot.js");
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		addExample(submenu, "Process Folder", "Batch_Process_Folder.js");
 		addExample(submenu, "Sine/Cosine Table", "Sine_Cosine_Table.js");
 		addExample(submenu, "Non-numeric Table", "Non-numeric_Table.js");

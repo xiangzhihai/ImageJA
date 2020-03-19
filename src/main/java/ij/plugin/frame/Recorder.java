@@ -129,8 +129,6 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 
 	/** Replaces '\' characters with '/'. */
 	static String fixPath (String path) {
-		if (path==null)
-			path = "";
 		if (!IJ.isWindows())
 			return path;
 		StringBuilder sb = new StringBuilder();
@@ -286,8 +284,7 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 	}
 
 	public static void record(String method, String path, String args, int a1, int a2, int a3, int a4, int a5) {
-		if (textArea==null)
-			return;
+		if (textArea==null) return;
 		path = fixPath(path);
 		method = "//"+method;
 		textArea.append(method+"(\""+path+"\", "+"\""+args+"\", "+a1+", "+a2+", "+a3+", "+a4+", "+a5+");\n");
@@ -683,8 +680,6 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 	}
 
 	static String addQuotes(String value) {
-		if (value==null)
-			value = "";
 		int index = value.indexOf(' ');
 		if (index>-1)
 			value = "["+value+"]";

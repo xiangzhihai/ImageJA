@@ -84,6 +84,7 @@ public class DICOM extends ImagePlus implements PlugIn {
 		String fileName = od.getFileName();
 		if (fileName==null)
 			return;
+		//IJ.showStatus("Opening: " + directory + fileName);
 		DicomDecoder dd = new DicomDecoder(directory, fileName);
 		dd.inputStream = inputStream;
 		FileInfo fi = null;
@@ -110,10 +111,19 @@ public class DICOM extends ImagePlus implements PlugIn {
 		if (fi!=null && fi.width>0 && fi.height>0 && fi.offset>0) {
 			FileOpener fo = new FileOpener(fi);
 			ImagePlus imp = fo.openImage();
+<<<<<<< HEAD
+<<<<<<< HEAD
 			boolean openAsFloat = (dd.rescaleSlope!=1.0&&!Prefs.ignoreRescaleSlope) || Prefs.openDicomsAsFloat;		
 			String options = Macro.getOptions();
 			if (openAsFloat) {
 				IJ.run(imp, "32-bit", "");
+=======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+			ImageProcessor ip = imp.getProcessor();
+			if (Prefs.openDicomsAsFloat) {
+				ip = ip.convertToFloat();
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 				if (dd.rescaleSlope!=1.0)
 					IJ.run(imp, "Multiply...", "value="+dd.rescaleSlope+" stack");
 				if (dd.rescaleIntercept!=0.0)
@@ -140,7 +150,10 @@ public class DICOM extends ImagePlus implements PlugIn {
 			if (dd.windowWidth>0.0) {
 				double min = dd.windowCenter-dd.windowWidth/2;
 				double max = dd.windowCenter+dd.windowWidth/2;
-				if (!openAsFloat) {
+				if (Prefs.openDicomsAsFloat) {
+					min -= dd.rescaleIntercept;
+					max -= dd.rescaleIntercept;
+				} else {
 					Calibration cal = imp.getCalibration();
 					min = cal.getRawValue(min);
 					max = cal.getRawValue(max);
