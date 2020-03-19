@@ -11,7 +11,11 @@
 
 	<groupId>net.imagej</groupId>
 	<artifactId>ij</artifactId>
+<<<<<<< HEAD
 	<version>1.52u</version>
+=======
+	<version>1.52h</version>
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 
 	<name>ImageJ</name>
 	<description>ImageJ is an open source Java image processing program inspired by NIH Image for the Macintosh.</description>

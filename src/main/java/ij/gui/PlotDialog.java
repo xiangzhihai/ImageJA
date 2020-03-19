@@ -59,6 +59,7 @@ public class PlotDialog implements DialogListener {
 	/** Asks the user for axis scaling; then replot with new scale on the same ImageProcessor.
 	 *	The 'parent' frame may be null */
 	public void showDialog(Frame parent) {
+<<<<<<< HEAD
 		if (dialogType == HI_RESOLUTION) {	//'make high-resolution plot' dialog has no preview, handled separately
 			doHighResolutionDialog(parent);
 			return;
@@ -123,6 +124,17 @@ public class PlotDialog implements DialogListener {
 			gd.addNumericField("X_From", currentMinMax[0], xDigits, 6, "*");
 			gd.addToSameRow();
 			gd.addNumericField("To", currentMinMax[1], xDigits, 6, "*");
+=======
+		GenericDialog gd = parent == null ? new GenericDialog(HEADINGS[dialogType]) :
+				new GenericDialog(HEADINGS[dialogType], parent);
+		if (dialogType == SET_RANGE) {
+			double[] currentMinMax = plot.currentMinMax;
+			boolean livePlot = plot.plotMaker != null;
+			int xDigits = plot.logXAxis ? -2 : Plot.getDigits(currentMinMax[0], currentMinMax[1], 0.005*Math.abs(currentMinMax[1]-currentMinMax[0]), 6);
+			int yDigits = plot.logYAxis ? -2 : Plot.getDigits(currentMinMax[2], currentMinMax[3], 0.005*Math.abs(currentMinMax[3]-currentMinMax[2]), 6);
+			gd.addNumericField("X_From*", currentMinMax[0], xDigits);
+			gd.addNumericField("X_To*", currentMinMax[1], xDigits);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 			gd.setInsets(0, 20, 0); //top, left, bottom
 			if (livePlot)
 				gd.addCheckbox("Fix_X Range While Live", (plot.templateFlags & Plot.X_RANGE) != 0);
@@ -138,6 +150,7 @@ public class PlotDialog implements DialogListener {
 			gd.addNumericField("To", currentMinMax[3], yDigits, 6, "*");
 			if (livePlot)
 				gd.addCheckbox("Fix_Y Range While Live", (plot.templateFlags & Plot.Y_RANGE) != 0);
+<<<<<<< HEAD
 			gd.addCheckbox("Log_Y Axis  **", (plot.hasFlag(Plot.Y_LOG_NUMBERS)));
 			yLogCheckbox = lastCheckboxAdded(gd);
 			enableDisableLogCheckbox(yLogCheckbox, currentMinMax[2], currentMinMax[3]);
@@ -146,6 +159,32 @@ public class PlotDialog implements DialogListener {
 			int digits = dialogType < Y_BOTTOM ? xDigits : yDigits;
 			gd.addNumericField(HEADINGS[dialogType], currentMinMax[dialogType - X_LEFT], digits, 6, "*");
 		}
+=======
+			gd.addCheckbox("Log_Y Axis", (plot.hasFlag(Plot.Y_LOG_NUMBERS)));
+			gd.addMessage("*Leave empty for automatic range", new Font("SansSerif", Font.PLAIN, 12));        //n__ begin PlotDialog
+			gd.showDialog();
+			if (gd.wasCanceled())
+				return;
+			plot.saveMinMax();
+			double linXMin = gd.getNextNumber();
+			if (gd.invalidNumber())
+				linXMin = Double.NaN;
+			double linXMax = gd.getNextNumber();
+			if (gd.invalidNumber())
+				linXMax = Double.NaN;
+			double linYMin = gd.getNextNumber();
+			if (gd.invalidNumber())
+				linYMin = Double.NaN;
+			double linYMax = gd.getNextNumber();
+			if (gd.invalidNumber())
+				linYMax = Double.NaN;
+			if (linXMin == linXMax || linYMin == linYMax)
+				return;
+			currentMinMax[0] = linXMin;
+			currentMinMax[1] = linXMax;
+			currentMinMax[2] = linYMin;
+			currentMinMax[3] = linYMax;
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 
 		if (dialogType == AXIS_OPTIONS || dialogType == X_AXIS || dialogType == Y_AXIS) {
 			int flags = plot.getFlags();

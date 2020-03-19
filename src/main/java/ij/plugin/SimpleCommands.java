@@ -48,6 +48,7 @@ public class SimpleCommands implements PlugIn {
 			showFonts();
 		else if (arg.equals("opencp"))
 			openControlPanel();
+<<<<<<< HEAD
 		else if (arg.equals("magic"))
 			installMagicMontageTools();
 		else if (arg.equals("interactive"))
@@ -56,6 +57,8 @@ public class SimpleCommands implements PlugIn {
 			showDirectory(arg.replace("showdir", ""));
 		else if (arg.equals("measure"))
 			measureStack();
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	}
 	
 	private synchronized void showFonts() {
@@ -196,6 +199,7 @@ public class SimpleCommands implements PlugIn {
 			"ImageJ folder and then copy it back. More information is at\n \n"+
 			IJ.URL+"/docs/install/osx.html#randomization");
 	}
+<<<<<<< HEAD
 	
 	private void installMagicMontageTools() {
 		String name = "MagicMontageTools.txt";
@@ -260,4 +264,8 @@ public class SimpleCommands implements PlugIn {
 		return;
 	}
 
+=======
+
+		
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 }

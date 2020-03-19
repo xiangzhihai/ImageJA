@@ -14,7 +14,6 @@ public class FloatProcessor extends ImageProcessor {
 	private float[] snapshotPixels = null;
 	private float fillColor =  Float.MAX_VALUE;
 	private boolean fixedScale = false;
-	private float bgValue;
 
 	/** Creates a new FloatProcessor using the specified pixel array. */
 	public FloatProcessor(int width, int height, float[] pixels) {
@@ -107,16 +106,15 @@ public class FloatProcessor extends ImageProcessor {
 		minMaxSet = true;
 	}
 
-	/** Sets the min and max variables that control how real
-	 * pixel values are mapped to 0-255 screen values. Use
-	 * resetMinAndMax() to enable auto-scaling;
-	 * @see ij.plugin.frame.ContrastAdjuster 
+	/**
+	Sets the min and max variables that control how real
+	pixel values are mapped to 0-255 screen values. Use
+	resetMinAndMax() to enable auto-scaling;
+	@see ij.plugin.frame.ContrastAdjuster 
 	*/
 	public void setMinAndMax(double minimum, double maximum) {
-		if (minimum==0.0 && maximum==0.0) {
-			resetMinAndMax();
-			return;
-		}
+		if (minimum==0.0 && maximum==0.0)
+			{resetMinAndMax(); return;}
 		min = (float)minimum;
 		max = (float)maximum;
 		fixedScale = true;
@@ -703,7 +701,7 @@ public class FloatProcessor extends ImageProcessor {
 							pixels[index++] = pixels2[width*iys+ixs];
 						}
 					} else
-						pixels[index++] = bgValue;
+						pixels[index++] = 0;
 				}
 			}
 		}
@@ -1021,12 +1019,13 @@ public class FloatProcessor extends ImageProcessor {
 		fillValueSet = true;
 	}
 
+	/** Does nothing. The rotate() and scale() methods always zero fill. */
 	public void setBackgroundValue(double value) {
-		bgValue = (float)value;
 	}
 
+	/** Always returns 0. */
 	public double getBackgroundValue() {
-		return bgValue;
+		return 0.0;
 	}
 
 	public void setLutAnimation(boolean lutAnimation) {

@@ -1107,15 +1107,14 @@ public class ImagePlus implements ImageObserver, Measurements, Cloneable {
 			notifyListeners(UPDATED);
     }
 
-    /** Returns the width of this image in pixels. */
     public int getWidth() {
     	return width;
     }
 
-    /** Returns the height of this image in pixels. */
     public int getHeight() {
     	return height;
     }
+<<<<<<< HEAD
 
     /** Returns the size of this image in bytes. */
     public double getSizeInBytes() {
@@ -1129,6 +1128,9 @@ public class ImagePlus implements ImageObserver, Measurements, Cloneable {
     	return size;
 	}
 
+=======
+    
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	/** If this is a stack, returns the number of slices, else returns 1. */
 	public int getStackSize() {
 		if (stack==null || oneSliceStack)
@@ -1386,8 +1388,6 @@ public class ImagePlus implements ImageObserver, Measurements, Cloneable {
 		index1 = findKey(info, key+": "); // standard 'key: value' pair?
 		if (index1<0) // Bio-Formats metadata?
 			index1 = findKey(info, key+" = ");
-		if (index1<0) // '=' with no spaces
-			index1 = findKey(info, key+"=");
 		if (index1<0) // otherwise not found
 			return null;
 		if (index1==info.length())
@@ -1849,15 +1849,9 @@ public class ImagePlus implements ImageObserver, Measurements, Cloneable {
 				ip.resetRoi();
 		}
 		roi.setImage(this);
-		if ((roi instanceof PointRoi) && ((PointRoi)roi).addToOverlay()) {
-			IJ.run(this, "Add Selection...", "");
-			roi = null;
-			return;
-		}
 		if (updateDisplay)
 			draw();
-		if (roi!=null)
-			roi.notifyListeners(RoiListener.CREATED);
+		roi.notifyListeners(RoiListener.CREATED);
 	}
 
 	/** Creates a rectangular selection. */
@@ -2261,12 +2255,17 @@ public class ImagePlus implements ImageObserver, Measurements, Cloneable {
 		this.ignoreFlush = ignoreFlush;
 	}
 
+<<<<<<< HEAD
 
 	/** Returns a copy of this image or stack.
+=======
+	/** Returns a copy of this image or stack, cropped if there is an ROI.
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	* @see #crop
 	* @see ij.plugin.Duplicator#run
 	*/
 	public ImagePlus duplicate() {
+<<<<<<< HEAD
 		Roi roi = getRoi();
 		deleteRoi();
 		ImagePlus imp2 = (new Duplicator()).run(this);
@@ -2293,6 +2292,14 @@ public class ImagePlus implements ImageObserver, Measurements, Cloneable {
 	/** Returns a copy this image or stack slice, cropped if there is an ROI.
 	 * @see #duplicate
 	 * @see ij.plugin.Duplicator#crop
+=======
+		return (new Duplicator()).run(this);
+	}
+
+	/** Returns a copy this image or stack slice, cropped if there is an ROI.
+	* @see #duplicate
+	* @see ij.plugin.Duplicator#crop
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	*/
 	public ImagePlus crop() {
 		return (new Duplicator()).crop(this);

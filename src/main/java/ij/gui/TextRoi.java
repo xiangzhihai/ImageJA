@@ -325,21 +325,18 @@ public class TextRoi extends Roi {
 			g2d.setTransform(at);
 	}
 
-	/** Returns the name of the default font. Use getCurrentFont().getName()
-		 to get the name of the font that this TextRoi is using. */
-	public static String getDefaultFontName() {
+	/** Returns the name of the global (default) font. */
+	public static String getFont() {
 		return name;
 	}
 
-	/** Returns the default font size. Use getCurrentFont().getSize()
-		 to get the size of the font that this TextRoi is using. */
-	public static int getDefaultFontSize() {
+	/** Returns the global (default) font size. */
+	public static int getSize() {
 		return size;
 	}
 
-	/** Returns the default font style. Use getCurrentFont().getStyle()
-		 to get the style of the font that this TextRoi is using. */
-	public static int getDefaultFontStyle() {
+	/** Returns the global (default) font style. */
+	public static int getStyle() {
 		return style;
 	}
 	
@@ -685,6 +682,7 @@ public class TextRoi extends Roi {
 	public void setPreviousRoi(Roi previousRoi) {
 		this.previousRoi = previousRoi;
 	}
+<<<<<<< HEAD
 	
 	/** @deprecated Replaced by getDefaultFontName */
 	public static String getFont() {
@@ -707,5 +705,7 @@ public class TextRoi extends Roi {
 		updateBounds();
 	}
 
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
         
 }

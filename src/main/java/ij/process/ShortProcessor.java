@@ -15,7 +15,6 @@ public class ShortProcessor extends ImageProcessor {
 	private short[] snapshotPixels;
 	private byte[] LUT;
 	private boolean fixedScale;
-	private int bgValue;
 
 
 	/** Creates a new ShortProcessor using the specified pixel array and ColorModel.
@@ -730,7 +729,7 @@ public class ShortProcessor extends ImageProcessor {
 		double xlimit = width-1.0, xlimit2 = width-1.001;
 		double ylimit = height-1.0, ylimit2 = height-1.001;
 		// zero is 32768 for signed images
-		int background = isSigned16Bit()?bgValue+32768:bgValue; 
+		int background = isSigned16Bit()?32768:0; 
 		
 		if (interpolationMethod==BICUBIC) {
 			for (int y=roiY; y<(roiY + roiHeight); y++) {
@@ -980,14 +979,13 @@ public class ShortProcessor extends ImageProcessor {
 			fillValueSet = true;
 	}
 
+	/** Does nothing. The rotate() and scale() methods always zero fill. */
 	public void setBackgroundValue(double value) {
-		bgValue = (int)value;
-		if (bgValue<0) bgValue = 0;
-		if (bgValue>65535) bgValue = 65535;
 	}
 
+	/** Always returns 0. */
 	public double getBackgroundValue() {
-		return bgValue;
+		return 0.0;
 	}
 
 	/** Returns 65,536 bin histogram of the current ROI, which

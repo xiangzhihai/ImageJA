@@ -1843,7 +1843,7 @@ public class Toolbar extends Canvas implements MouseListener, MouseMotionListene
 			(new MacroInstaller()).installFromIJJar(path);
 	}
 	
-	public static void showCode(String title, String code) {
+	private void showCode(String title, String code) {
 		Editor ed = new Editor();
 		ed.setSize(550, 450);
 		ed.create(title, code);

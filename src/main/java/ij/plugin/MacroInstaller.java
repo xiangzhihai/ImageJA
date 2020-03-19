@@ -280,8 +280,11 @@ public class MacroInstaller implements PlugIn, MacroConstants, ActionListener {
 			Toolbar tb = Toolbar.getInstance();
 			if (tb!=null)
 				tb.installStartupTools();
+<<<<<<< HEAD
 		} else if (path.contains("Tools") || installMacros) {
 			install(text);
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		} else
 			installSingleTool(text);
 	}

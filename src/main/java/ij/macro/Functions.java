@@ -76,6 +76,10 @@ public class Functions implements MacroConstants, Measurements {
 	boolean autoContrast;
 	static WaitForUserDialog waitForUserDialog;
 	int pasteMode;
+<<<<<<< HEAD
+=======
+	int lineWidth = 1;
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	boolean expandableArrays;
 	int plotWidth;
 	int plotHeight;
@@ -147,6 +151,7 @@ public class Functions implements MacroConstants, Measurements {
 			case SET_RESULT: setResult(null); break;
 			case UPDATE_RESULTS: updateResults(); break;
 			case SET_BATCH_MODE: setBatchMode(); break;
+			case PLOT: doPlot(); break;
 			case SET_JUSTIFICATION: setJustification(); break;
 			case SET_Z_COORDINATE: setZCoordinate(); break;
 			case GET_THRESHOLD: getThreshold(); break;
@@ -240,7 +245,6 @@ public class Functions implements MacroConstants, Measurements {
 			case FIT: value = fit(); break;
 			case OVERLAY: value = overlay(); break;
 			case SELECTION_CONTAINS: value = selectionContains(); break;
-			case PLOT: value = doPlot(); break;
 			default:
 				interp.error("Numeric function expected");
 		}
@@ -287,6 +291,14 @@ public class Functions implements MacroConstants, Measurements {
 		}
 		return str;
 	}
+<<<<<<< HEAD
+=======
+	
+	private void setLineWidth(int width) {
+		lineWidth = width;
+		getProcessor().setLineWidth(width);
+	}
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 
 	Variable[] getArrayFunction(int type) {
 		Variable[] array;
@@ -886,6 +898,7 @@ public class Functions implements MacroConstants, Measurements {
 	ImageProcessor getProcessor() {
 		if (defaultIP==null) {
 			defaultIP = getImage().getProcessor();
+<<<<<<< HEAD
 			if (globalLineWidth>0)
 				defaultIP.setLineWidth(globalLineWidth);
 			if (globalColor!=null)
@@ -894,6 +907,10 @@ public class Functions implements MacroConstants, Measurements {
 				defaultIP.setValue(globalValue);
 			else
 				defaultIP.setColor(Toolbar.getForegroundColor());
+=======
+			if (lineWidth!=1)
+				defaultIP.setLineWidth(lineWidth);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		}
 		return defaultIP;
 	}
@@ -1136,6 +1153,8 @@ public class Functions implements MacroConstants, Measurements {
 			}
 		}
 		if (mask!=null) ip.reset(mask);
+		if (imp.getType()==ImagePlus.GRAY16 || imp.getType()==ImagePlus.GRAY32)
+			ip.resetMinAndMax();
 		imp.updateAndDraw();
 		updateNeeded = false;
 	}
@@ -2029,19 +2048,19 @@ public class Functions implements MacroConstants, Measurements {
 		if (isStringArg()) {
 			type = getString().toLowerCase();
 			roiType = Roi.POLYGON;
-			if (type.contains("free"))
+			if (type.indexOf("free")!=-1)
 				roiType = Roi.FREEROI;
-			if (type.contains("traced"))
+			if (type.indexOf("traced")!=-1)
 				roiType = Roi.TRACED_ROI;
-			if (type.contains("line")) {
-				if (type.contains("free"))
+			if (type.indexOf("line")!=-1) {
+				if (type.indexOf("free")!=-1)
 					roiType = Roi.FREELINE;
 				else
 					roiType = Roi.POLYLINE;
 			}
-			if (type.contains("angle"))
+			if (type.indexOf("angle")!=-1)
 				roiType = Roi.ANGLE;
-			if (type.contains("point")||type.contains("cross")||type.contains("circle")||type.contains("dot"))
+			if (type.indexOf("point")!=-1)
 				roiType = Roi.POINT;
 		} else {
 			roiType = (int)interp.getExpression();
@@ -2099,6 +2118,7 @@ public class Functions implements MacroConstants, Measurements {
 			else
 				roi = new Line(xcoord[0], ycoord[0], xcoord[1], ycoord[1]);
 		} else if (roiType==Roi.POINT) {
+<<<<<<< HEAD
 			if (type!=null && !type.equals("point")) {
 				if (!floatCoordinates) {
 					xfcoord = new float[n];
@@ -2110,6 +2130,9 @@ public class Functions implements MacroConstants, Measurements {
 				}
 				roi = new PointRoi(xfcoord, yfcoord, type);
 			} else if (floatCoordinates)
+=======
+			if (floatCoordinates)
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 				roi = new PointRoi(xfcoord, yfcoord, n);
 			else
 				roi = new PointRoi(xcoord, ycoord, n);
@@ -2131,22 +2154,29 @@ public class Functions implements MacroConstants, Measurements {
 		shiftKeyDown = altKeyDown = false;
 	}
 
-	double doPlot() {
+	void doPlot() {
 		interp.getToken();
 		if (interp.token!='.')
 			interp.error("'.' expected");
 		interp.getToken();
-		if (!(interp.token==WORD || interp.token==PREDEFINED_FUNCTION || interp.token==STRING_FUNCTION))
+		if (!(interp.token==WORD || interp.token==PREDEFINED_FUNCTION))
 			interp.error("Function name expected: ");
 		String name = interp.tokenString;
 		if (name.equals("create")) {
-			return newPlot();
+			newPlot();
+			return;
 		} else if (name.equals("getValues")) {
-			return getPlotValues();
+			getPlotValues();
+			return;
 		} else if (name.equals("showValues")) {
+<<<<<<< HEAD
 			return showPlotValues(/*useLabels=*/false);
 		} else if (name.equals("showValuesWithLabels")) {
 			return showPlotValues(/*useLabels=*/true);
+=======
+			showPlotValues();
+			return;
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		}
 		// the following commands work with a plot under construction or an image with a plot created previously
 		Plot currentPlot = plot;
@@ -2156,14 +2186,14 @@ public class Functions implements MacroConstants, Measurements {
 			interp.error("No plot window and no plot under construction");
 		if (name.equals("setFrameSize")) {
 			currentPlot.setFrameSize((int)getFirstArg(), (int)getLastArg());
-			return Double.NaN;
+			return;
 		} else if (name.equals("setLimits")) {
 			currentPlot.setLimits(getFirstArg(), getNextArg(), getNextArg(), getLastArg());
-			return Double.NaN;
+			return;
 		} else if (name.equals("setLimitsToFit")) {
 			interp.getParens();
 			currentPlot.setLimitsToFit(true);
-			return Double.NaN;
+			return;
 		} else if (name.equals("setLogScaleX")) {
 			if (interp.nextNextToken()==')') {  //no-argument call setLogScaleX() means true
 				interp.getParens();
@@ -2171,7 +2201,7 @@ public class Functions implements MacroConstants, Measurements {
 			} else
 				currentPlot.setAxisXLog(getBooleanArg());
 			currentPlot.updateImage();
-			return Double.NaN;
+			return;
 		} else if (name.equals("setLogScaleY")) {
 			if (interp.nextNextToken()==')') {
 				interp.getParens();
@@ -2179,47 +2209,53 @@ public class Functions implements MacroConstants, Measurements {
 			} else
 				currentPlot.setAxisYLog(getBooleanArg());
 			currentPlot.updateImage();
-			return Double.NaN;
+			return;
 		} else if (name.equals("getLimits")) {
-			return getPlotLimits(currentPlot);
+			getPlotLimits(currentPlot);
+			return;
 		} else if (name.equals("freeze")) {
 			if (interp.nextNextToken()==')') {
 				interp.getParens();
 				currentPlot.setFrozen(true);
 			} else
 				currentPlot.setFrozen(getBooleanArg());
-			return Double.NaN;
+			return;
 		}  else if (name.equals("addLegend") || name.equals("setLegend")) {
-			return addPlotLegend(currentPlot);
+			addPlotLegend(currentPlot);
+			return;
 		}  else if (name.equals("setStyle")) {
-			int index = (int)getFirstArg();
-			if (index<0 || index>=currentPlot.getNumPlotObjects())
-				interp.error("Index out of bounds");
-			currentPlot.setStyle(index, getLastString());
-			if (plot == null)
-				currentPlot.updateImage();
-			return Double.NaN;
+			currentPlot.setPlotObjectStyle((int)getFirstArg(), getLastString());
+			return;
 		}  else if (name.equals("makeHighResolution")) {
-			return makeHighResolution(currentPlot);
+			makeHighResolution(currentPlot);
+			return;
 		} else if (name.equals("setColor")) {
-			return setPlotColor(currentPlot);
+			setPlotColor(currentPlot);
+			return;
 		} else if (name.equals("setBackgroundColor")) {
-			return setPlotBackgroundColor(currentPlot);
+			setPlotBackgroundColor(currentPlot);
+			return;
 		} else if (name.equals("setFontSize")) {
-			return setPlotFontSize(currentPlot, false);
+			setPlotFontSize(currentPlot, false);
+			return;
 		} else if (name.equals("setAxisLabelSize")) {
-			return setPlotFontSize(currentPlot, true);
+			setPlotFontSize(currentPlot, true);
+			return;
 		} else if (name.equals("setXYLabels")) {
 			currentPlot.setXYLabels(getFirstString(), getLastString());
 			currentPlot.updateImage();
-			return Double.NaN;
+			return;
 		} else if (name.equals("setFormatFlags")) {
-			return setPlotFormatFlags(currentPlot);
+			setPlotFormatFlags(currentPlot);
+			return;
 		} else if (name.equals("useTemplate")) {
-			return fromPlot(currentPlot, 't');
+			fromPlot(currentPlot, 't');
+			return;
 		} else if (name.equals("addFromPlot")) {
-			return fromPlot(currentPlot, 'a');
+			fromPlot(currentPlot, 'a');
+			return;
 		} else if (name.equals("getFrameBounds")) {
+<<<<<<< HEAD
 			return getPlotFrameBounds(currentPlot);
 		} else if (name.equals("objectCount")||name.equals("getNumObjects")) {
 			return currentPlot.getNumPlotObjects();
@@ -2229,31 +2265,54 @@ public class Functions implements MacroConstants, Measurements {
 			return replacePlot(currentPlot);
 		} else if (name.equals("addText") || name.equals("drawLabel")) {
 			return addPlotText(currentPlot);
+=======
+			getPlotFrameBounds(currentPlot);
+			return;
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		}
 		// the following commands need a plot under construction
 		if (plot==null)
 			interp.error("No plot defined");
 		if (name.equals("show")) {
-			return showPlot();
+			showPlot();
+			return;
 		} else if (name.equals("update")) {
-			return updatePlot();
+			updatePlot();
+			return;
+		} else if (name.equals("addText") || name.equals("drawLabel")) {
+			addPlotText();
+			return;
 		} else if (name.equals("drawLine")) {
-			return drawPlotLine(false);
+			drawPlotLine(false);
+			return;
 		} else if (name.equals("drawNormalizedLine")) {
-			return drawPlotLine(true);
+			drawPlotLine(true);
+			return;
 		} else if (name.equals("drawVectors")) {
-			return drawPlotVectors();
+			drawPlotVectors();
+			return;
 		} else if (name.equals("drawShapes")) {
-			return drawShapes();
+			drawShapes();
+			return;
 		} else if (name.equals("drawGrid")) {
+<<<<<<< HEAD
 			plot.drawShapes("redraw_grid", null);
 			return Double.NaN;
+=======
+			plot.drawShapes("redraw_grid", null);	
+			return;
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		} else if (name.startsWith("setLineWidth")) {
 			plot.setLineWidth((float)getArg());
-			return Double.NaN;
+			return;
 		} else if (name.startsWith("setJustification")) {
 			setJustification();
-			return Double.NaN;
+			return;
+		} else if (name.equals("add")) {
+			String arg = getFirstString();
+			int what = Plot.toShape(arg);
+			addToPlot(what, arg);
+			return;			
 		} else if (name.equals("addHistogram")) {
 			interp.getLeftParen();
 			Variable[] arrV = getArray();
@@ -2266,21 +2325,27 @@ public class Functions implements MacroConstants, Measurements {
 			else
 				interp.putTokenBack();
 			interp.getRightParen();
+			
 			int len1 = arrV.length;
 			double[] arrD = new double[len1];
 			for (int i=0; i<len1; i++)
+<<<<<<< HEAD
 				arrD[i] = arrV[i].getValue();
 			plot.addHistogram(arrD, binWidth, binCenter);
 			return Double.NaN;
+=======
+				arrD[i] = arrV[i].getValue();		
+			plot.addHistogram(arrD, binWidth, binCenter);			
+			return;	
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		} else if (name.equals("appendToStack")) {
 			plot.appendToStack();
-			return Double.NaN;
+			return;
 		} else
 			interp.error("Unrecognized plot function");
-		return Double.NaN;
 	}
 
-	double getPlotValues() {
+	void getPlotValues() {
 		Variable xvar = getFirstArrayVariable();
 		Variable yvar = getLastArrayVariable();
 		float[] xvalues = new float[0];
@@ -2314,10 +2379,13 @@ public class Functions implements MacroConstants, Measurements {
 			ya[i] = new Variable(yvalues[i]);
 		xvar.setArray(xa);
 		yvar.setArray(ya);
-		return Double.NaN;
 	}
 
+<<<<<<< HEAD
 	double showPlotValues(boolean useLabels) {
+=======
+	void showPlotValues() {
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		String title = "Results";
 		if (interp.nextToken() == '(') {
 			interp.getLeftParen();
@@ -2328,6 +2396,7 @@ public class Functions implements MacroConstants, Measurements {
 		interp.getParens();
 		ImagePlus imp = getImage();
 		ImageWindow win = imp.getWindow();
+<<<<<<< HEAD
 		Plot plot = win instanceof PlotWindow ? ((PlotWindow)win).getPlot() : imp.getPlot();
 		if (plot!=null) {
 			ResultsTable rt = useLabels ? plot.getResultsTableWithLabels() : plot.getResultsTable(true);
@@ -2336,9 +2405,18 @@ public class Functions implements MacroConstants, Measurements {
 		} else
 			interp.error("No plot window");
 		return Double.NaN;
+=======
+		if (win==null || !(win instanceof PlotWindow)) {
+			interp.error("No plot window");
+			return;
+		}
+		PlotWindow pw = (PlotWindow)win;
+		ResultsTable rt = pw.getResultsTable();
+		rt.show(title);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	}
 
-	double newPlot() {
+	void newPlot() {
 		String title = getFirstString();
 		String xLabel = getNextString();
 		String yLabel = getNextString();
@@ -2357,10 +2435,9 @@ public class Functions implements MacroConstants, Measurements {
 		}
 		interp.getRightParen();
 		plot = new Plot(title, xLabel, yLabel, x, y);
-		return Double.NaN;
 	}
 
-	double showPlot() {
+	void showPlot() {
 		if (plot!=null) {
 			PlotWindow plotWindow = plot.show();
 			if (plotWindow!=null)
@@ -2368,10 +2445,9 @@ public class Functions implements MacroConstants, Measurements {
 		}
 		plot = null;
 		interp.getParens();
-		return Double.NaN;
 	}
 
-	double updatePlot() {
+	void updatePlot() {
 		if (plot!=null) {
 			ImagePlus plotImage = WindowManager.getImage(plotID);
 			ImageWindow win = plotImage!=null?plotImage.getWindow():null;
@@ -2385,19 +2461,17 @@ public class Functions implements MacroConstants, Measurements {
 		}
 		plot = null;
 		interp.getParens();
-		return Double.NaN;
 	}
 
-	double addPlotText(Plot plot) {
+	void addPlotText() {
 		String str = getFirstString();
 		double x = getNextArg();
 		double y = getLastArg();
 		plot.setJustification(justification);
 		plot.addLabel(x, y, str);
-		return Double.NaN;
 	}
 
-	double drawPlotLine(boolean normalized) {
+	void drawPlotLine(boolean normalized) {
 		double x1 = getFirstArg();
 		double y1 = getNextArg();
 		double x2 = getNextArg();
@@ -2406,21 +2480,19 @@ public class Functions implements MacroConstants, Measurements {
 			plot.drawNormalizedLine(x1, y1, x2, y2);
 		else
 			plot.drawLine(x1, y1, x2, y2);
-		return Double.NaN;
 	}
 
-	double drawPlotVectors() {
+	void drawPlotVectors() {
 		double[] x1 = getFirstArray();
 		double[] y1 = getNextArray();
 		double[] x2 = getNextArray();
 		double[] y2 = getLastArray();
 		plot.drawVectors(x1, y1, x2, y2);
-		return Double.NaN;
 	}
 
 	//Example 10 boxes: ArrayList has 10 elements, each holding a float[6] for coordinates
 	//Example 10 rectangles: ArrayList has 10 elements, each holding a float[4] for the corners
-	double drawShapes() {
+	void drawShapes() {
 		String type = getFirstString().toLowerCase();
 		double[][] arr2D = null;
 		int nBoxes = 0;
@@ -2431,7 +2503,7 @@ public class Functions implements MacroConstants, Measurements {
 			nCoords = 6;//centers, Q1s, Q2s, Q3s, Q4s, Q5s (Q= quartile border)
 		} else {
 			interp.error("Must contain 'rectangles' or 'boxes'");
-			return Double.NaN;
+			return;
 		}
 		double[] arr = null;
 		for (int jj = 0; jj < nCoords; jj++) {
@@ -2448,7 +2520,7 @@ public class Functions implements MacroConstants, Measurements {
 				nBoxes = arr.length;
 				if (jj > 0 && arr2D[0].length != nBoxes) {
 					interp.error("Arrays must have same length (" + nBoxes + ")");
-					return Double.NaN;
+					return;
 				}
 				if (arr2D == null) {
 					arr2D = new double[nCoords][nBoxes];
@@ -2472,10 +2544,14 @@ public class Functions implements MacroConstants, Measurements {
 			shapeData.add(coords);
 		}
 		plot.drawShapes(type, shapeData);
-		return Double.NaN;
 	}
+<<<<<<< HEAD
 
 	double setPlotColor(Plot plot) {
+=======
+	
+	void setPlotColor(Plot plot) {
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		interp.getLeftParen();
 		Color color = getColor();
 		Color color2 = null;
@@ -2485,18 +2561,16 @@ public class Functions implements MacroConstants, Measurements {
 		}
 		plot.setColor(color, color2);
 		interp.getRightParen();
-		return Double.NaN;
 	}
 
-	double setPlotBackgroundColor(Plot plot) {
+	void setPlotBackgroundColor(Plot plot) {
 		interp.getLeftParen();
 		Color color = getColor();
 		interp.getRightParen();
 		plot.setBackgroundColor(color);
-		return Double.NaN;
 	}
 
-	double setPlotFontSize(Plot plot, boolean forAxisLabels) {
+	void setPlotFontSize(Plot plot, boolean forAxisLabels) {
 		float size = (float)getFirstArg();
 		int style = -1;
 		if (interp.nextToken()!=')') {
@@ -2513,10 +2587,9 @@ public class Functions implements MacroConstants, Measurements {
 		else
 			plot.setFont(style, size);
 		plot.updateImage();
-		return Double.NaN;
 	}
 
-	double setPlotFormatFlags(Plot plot) {
+	void setPlotFormatFlags(Plot plot) {
 		String flagString = getStringArg();
 		try {
 			int flags = Integer.parseInt(flagString, 2);
@@ -2525,11 +2598,10 @@ public class Functions implements MacroConstants, Measurements {
 		} catch (NumberFormatException e) {
 			interp.error("Plot format flags not binary");
 		}
-		return Double.NaN;
 	}
 
 	/** Plot.useTemplate with 't', Plot.addFromPlot with 'a' */
-	double fromPlot(Plot plot, char type) {
+	void fromPlot(Plot plot, char type) {
 	    ImagePlus sourceImp = null;
 	    interp.getLeftParen();
 		if (isStringArg()) {
@@ -2555,10 +2627,9 @@ public class Functions implements MacroConstants, Measurements {
 		} else
 			plot.useTemplate(sourcePlot);
 		interp.getRightParen();
-		return Double.NaN;
 	}
 
-	double addPlotLegend(Plot plot) {
+	void addPlotLegend(Plot plot) {
 		String labels = getFirstString();
 		String options = null;
 		if (interp.nextToken()!=')')
@@ -2568,28 +2639,25 @@ public class Functions implements MacroConstants, Measurements {
 		plot.setColor(Color.BLACK);
 		plot.setLineWidth(1);
 		plot.addLegend(labels, options);
-		return Double.NaN;
 	}
 
-	double getPlotLimits(Plot plot) {
+	void getPlotLimits(Plot plot) {
 		double[] limits = plot.getLimits();
 		getFirstVariable().setValue(limits[0]);  //xMin
 		getNextVariable().setValue(limits[1]);   //xMax
 		getNextVariable().setValue(limits[2]);   //yMin
 		getLastVariable().setValue(limits[3]);   //yMax
-		return Double.NaN;
 	}
 
-	double getPlotFrameBounds(Plot plot) {
+	void getPlotFrameBounds(Plot plot) {
 		Rectangle r = plot.getDrawingFrame();
 		getFirstVariable().setValue(r.x);
 		getNextVariable().setValue(r.y);
 		getNextVariable().setValue(r.width);
 		getLastVariable().setValue(r.height);
-		return Double.NaN;
 	}
 
-	double makeHighResolution(Plot plot) {
+	void makeHighResolution(Plot plot) {
 		String title = getFirstString();
 		double scale = getNextArg();
 		boolean antialiasedText = true;
@@ -2600,12 +2668,16 @@ public class Functions implements MacroConstants, Measurements {
 		} else
 			interp.getRightParen();
 		plot.makeHighResolution(title, (float)scale, antialiasedText, true);
-		return Double.NaN;
 	}
 
+<<<<<<< HEAD
 	double addToPlot(Plot currentPlot) {
 		String shape = getFirstString();
 		int what = Plot.toShape(shape);
+=======
+	void addToPlot(int what, String shape) {
+		boolean errorBars = false;
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		double[] x = getNextArray();
 		double[] y;
 		double[] errorBars = null;
@@ -2628,14 +2700,21 @@ public class Functions implements MacroConstants, Measurements {
 		}
 		interp.getRightParen();
 		if (what==-1)
-			currentPlot.addErrorBars(y);
+			plot.addErrorBars(y);
 		else if (what==-2)
+<<<<<<< HEAD
 			currentPlot.addHorizontalErrorBars(y);
 		else if (errorBars != null)
 			currentPlot.addPoints(x, y, errorBars, what);
+=======
+			plot.addHorizontalErrorBars(y);
+		else if (errorBars)
+			plot.addPoints(x, y, e, what);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		else if (what==Plot.CUSTOM)
-			currentPlot.add(shape, x, y);
+			plot.add(shape, x, y);
 		else
+<<<<<<< HEAD
 			currentPlot.addPoints(x, y, what);
 		if (label != null)
 			currentPlot.setLabel(-1, label);
@@ -2649,6 +2728,9 @@ public class Functions implements MacroConstants, Measurements {
 		double[] y = getLastArray();
 		plot.replace(index, shape, x, y);
 		return Double.NaN;
+=======
+			plot.addPoints(x, y, what);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	}
 
 	void getBounds() {
@@ -3082,9 +3164,9 @@ public class Functions implements MacroConstants, Measurements {
 		int size = 0;
 		int style = 0;
 		if (name.equals("user")) {
-			name = TextRoi.getDefaultFontName();
-			size = TextRoi.getDefaultFontSize();
-			style = TextRoi.getDefaultFontStyle();
+			name = TextRoi.getFont();
+			size = TextRoi.getSize();
+			style = TextRoi.getStyle();
 			antialiasedText = TextRoi.isAntialiased();
 			interp.getRightParen();
 		} else {
@@ -3236,11 +3318,14 @@ public class Functions implements MacroConstants, Measurements {
 							if (pattern.equalsIgnoreCase("cp")) {
 								((ColorPicker) thisWin).close();
 							}
+<<<<<<< HEAD
 						}
 						if (thisWin instanceof ThresholdAdjuster) {//Threshold
 							if (pattern.equalsIgnoreCase("Threshold")) {
 								((ThresholdAdjuster) thisWin).close();
 							}
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 						}
 						if (thisWin instanceof Editor) {//macros editor, loaded text files
 							Editor ed = (Editor) thisWin;
@@ -4062,27 +4147,27 @@ public class Functions implements MacroConstants, Measurements {
 	void setMetadata() {
 		String metadata = null;
 		String arg1 = getFirstString();
+		boolean oneArg = false;
 		if (interp.nextToken()==',')
 			metadata = getLastString();
 		else
 			interp.getRightParen();
-		ImagePlus imp = getImage();
 		boolean isInfo = false;
-		if (metadata==null) { // one argument
+		if (metadata==null) {
 			metadata = arg1;
-			if (imp.getStackSize()==1)
-				isInfo = true;
+			oneArg = true;
 			if (metadata.startsWith("Info:")) {
 				metadata = metadata.substring(5);
 				isInfo = true;
 			}
 		} else
 			isInfo = arg1.startsWith("info") || arg1.startsWith("Info");
+		ImagePlus imp = getImage();
 		if (metadata!=null && metadata.length()==0)
 			metadata = null;
-		if (isInfo)
+		if (isInfo || oneArg) {
 			imp.setProperty("Info", metadata);
-		else {
+		} else {
 			imp.getStack().setSliceLabel(metadata, imp.getCurrentSlice());
 			if (imp.getStackSize()==1)
 					imp.setProperty("Label", metadata);
@@ -4091,21 +4176,22 @@ public class Functions implements MacroConstants, Measurements {
 	}
 
 	String getMetadata() {
-		String type = "info";
-		ImagePlus imp = getImage();
-		if (interp.nextToken()=='(' && interp.nextNextToken()!=')')
+		String type = "label";
+		boolean noArg = true;
+		if (interp.nextToken()=='(' && interp.nextNextToken()!=')') {
 			type = getStringArg().toLowerCase(Locale.US);
-		else {  // no arg
+			noArg = false;
+		} else
 			interp.getParens();
-			type = imp.getStackSize()>1?"label":"info";
-		}
+		ImagePlus imp = getImage();
 		String metadata = null;
-		if (type.contains("info")) {
+		if (type.indexOf("label")!=-1) {
+			metadata = imp.getStack().getSliceLabel(imp.getCurrentSlice());
+		} else {
 			metadata = (String)imp.getProperty("Info");
 			if (metadata==null && imp.getStackSize()>1)
 				metadata = imp.getStack().getSliceLabel(imp.getCurrentSlice());
-		} else
-			metadata = imp.getStack().getSliceLabel(imp.getCurrentSlice());
+		}
 		if (metadata==null)
 			metadata = "";
 		return metadata;
@@ -4594,8 +4680,6 @@ public class Functions implements MacroConstants, Measurements {
 			BatchProcessor.saveOutput(state);
 		else if (arg1.startsWith("converttomicrons"))
 			Prefs.convertToMicrons = state;
-		else if (arg1.startsWith("supportmacroundo"))
-			Prefs.supportMacroUndo = state;
 		else if (arg1.equals("inverty"))
 			getImage().getCalibration().setInvertY(state);
 		else if (arg1.equals("scaleconversions"))
@@ -5608,18 +5692,11 @@ public class Functions implements MacroConstants, Measurements {
 
 	void makePoint() {
 		double x = getFirstArg();
-		double y = getNextArg();
-		String options = null;
-		if (interp.nextToken()==',')
-			options = getNextString();
-		interp.getRightParen();
-		if (options==null) {
-			if ((int)x==x && (int)y==y)
-				IJ.makePoint((int)x, (int)y);
-			else
-				IJ.makePoint(x, y);
-		} else
-			getImage().setRoi(new PointRoi(x, y, options));
+		double y = getLastArg();
+		if ((int)x==x && (int)y==y)
+			IJ.makePoint((int)x, (int)y);
+		else
+			IJ.makePoint(x, y);
 		resetImage();
 		shiftKeyDown = altKeyDown = false;
 	}
@@ -6781,9 +6858,15 @@ public class Functions implements MacroConstants, Measurements {
 				offscreenOverlay = new Overlay();
 			overlay = offscreenOverlay;
 		}
+<<<<<<< HEAD
 		if (globalColor!=null)
 			roi.setStrokeColor(globalColor);
 		roi.setStrokeWidth(getProcessor().getLineWidth());
+=======
+		if (defaultColor!=null)
+			roi.setStrokeColor(defaultColor);
+		roi.setLineWidth(getProcessor().getLineWidth());
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		overlay.add(roi);
 	}
 
@@ -6873,11 +6956,15 @@ public class Functions implements MacroConstants, Measurements {
 		else if (name.equals("allHeadings"))
 			return getAllHeadings();
 		else if (name.equals("showRowNumbers"))
+<<<<<<< HEAD
 			return showRowNumbers(true);
 		else if (name.equals("showRowIndexes"))
 			return showRowNumbers(false);
 		else if (name.equals("sort"))
 			return sortTable();
+=======
+			return showRowNumbers();
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		else if (name.equals("hideRowNumbers")) {
 			getResultsTable(getTitleArg()).showRowNumbers(false);
 			return null;
@@ -6969,6 +7056,7 @@ public class Functions implements MacroConstants, Measurements {
 
 	private Variable setTableValue() {
 		ResultsTable rt = getRT(null);
+		//IJ.log("set: "+rt);
 		setResult(rt);
 		return null;
 	}
@@ -6989,6 +7077,7 @@ public class Functions implements MacroConstants, Measurements {
 	private Variable updateTable() {
 		String title = getTitleArg();
 		ResultsTable rt = getResultsTable(title);
+		//IJ.log("update: "+rt.hashCode()+"  "+rt.getTitle());
 		rt.show(rt.getTitle());
 		unUpdatedTable = null;
 		if (rt==Analyzer.getResultsTable())
@@ -7122,6 +7211,7 @@ public class Functions implements MacroConstants, Measurements {
 		return null;
 	}
 
+<<<<<<< HEAD
 	private Variable sortTable() {
 		String column = getFirstString();
 		ResultsTable rt = getResultsTable(getTitle());
@@ -7134,6 +7224,8 @@ public class Functions implements MacroConstants, Measurements {
 		return null;
 	}
 
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	private Variable saveTable() {
 		String path = getFirstString();
 		ResultsTable rt = getResultsTable(getTitle());
@@ -7209,6 +7301,7 @@ public class Functions implements MacroConstants, Measurements {
 	}
 
 	private ResultsTable getRT(String title) {
+		//IJ.log("getRT: "+title+" "+currentTable);
 		if (interp.applyMacroTable!=null && title==null)
 			return interp.applyMacroTable;
 		ResultsTable rt = null;
