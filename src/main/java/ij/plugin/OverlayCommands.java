@@ -306,7 +306,12 @@ public class OverlayCommands implements PlugIn {
 			rm = new RoiManager();
 		if (overlay.size()>=4 && overlay.get(3).getPosition()!=0)
 			Prefs.showAllSliceOnly = true;
-		rm.setOverlay(overlay);
+		rm.runCommand("reset");
+		rm.setEditMode(imp, false);
+		for (int i=0; i<overlay.size(); i++)
+			rm.add(imp, overlay.get(i), i+1);
+		rm.setEditMode(imp, true);
+		rm.runCommand("show all");
 		imp.setOverlay(null);
 	}
 	
@@ -360,9 +365,6 @@ public class OverlayCommands implements PlugIn {
 			double strokeWidth = rois[i].getStrokeWidth();
 			int digits = strokeWidth==(int)strokeWidth?0:1;
 			String sWidth = IJ.d2s(strokeWidth,digits);
-			String group = ""+rois[i].getGroup();
-			if (group.equals("0"))
-				group = "none";
 			int position = rois[i].getPosition();
 			int c = rois[i].getCPosition();
 			int z = rois[i].getZPosition();
@@ -370,7 +372,6 @@ public class OverlayCommands implements PlugIn {
 			rt.setValue("Index", i, i);
 			rt.setValue("Name", i, rois[i].getName());
 			rt.setValue("Type", i, rois[i].getTypeAsString());
-			rt.setValue("Group", i, group);
 			rt.setValue("X", i, r.x);
 			rt.setValue("Y", i, r.y);
 			rt.setValue("Width", i, r.width);		
@@ -384,9 +385,7 @@ public class OverlayCommands implements PlugIn {
 			rt.setValue("Z", i, z);	
 			rt.setValue("T", i, t);	
 		}
-		ImagePlus imp = WindowManager.getCurrentImage();
-		String title = imp!=null?" of "+imp.getTitle():"";
-		rt.show("Overlay Elements"+title);//Marcel Boeglin 2019.10.07
+		rt.show("Overlay Elements");
 	}
 	
 }

@@ -1,6 +1,8 @@
 package ij.plugin.filter;
 import ij.*;
-import ij.gui.*;
+import ij.gui.GenericDialog;
+import ij.gui.DialogListener;
+import ij.gui.Roi;
 import ij.process.*;
 import ij.plugin.ContrastEnhancer;
 import java.awt.*;
@@ -106,7 +108,7 @@ public class RankFilters implements ExtendedPlugInFilter, DialogListener {
 			filterType = MEDIAN;
 			radius = 1.0;
 		} else {
-			GenericDialog gd = NonBlockingGenericDialog.newDialog(command+"...",imp);
+			GenericDialog gd = new GenericDialog(command+"...");
 			radius = lastRadius[filterType]<=0 ? 2 :  lastRadius[filterType];
 			gd.addNumericField("Radius", radius, 1, 6, "pixels");
 			int digits = imp.getType() == ImagePlus.GRAY32 ? 2 : 0;

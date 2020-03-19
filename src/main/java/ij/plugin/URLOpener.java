@@ -52,8 +52,7 @@ public class URLOpener implements PlugIn {
 					imp.setFileInfo(fi);
 				}
 				imp.show(Opener.getLoadRate(startTime,imp));
-				String title = imp.getTitle();
-				if (title!=null && (title.startsWith("flybrain") || title.startsWith("t1-head")))
+				if ("flybrain.tif".equals(imp.getTitle()) || "t1-head.tif".equals(imp.getTitle()) )
 					imp.setSlice(imp.getStackSize()/2);
 			}
 			return;
@@ -72,7 +71,7 @@ public class URLOpener implements PlugIn {
 			url = "http://" + url;
 		if (url.endsWith("/"))
 			IJ.runPlugIn("ij.plugin.BrowserLauncher", url.substring(0, url.length()-1));
-		else if (url.endsWith(".html") || url.endsWith(".htm") ||  url.indexOf(".html#")>0 || noExtension(url))
+		else if (url.endsWith(".html") || url.endsWith(".htm") || url.endsWith(".pdf") ||  url.indexOf(".html#")>0 || noExtension(url))
 			IJ.runPlugIn("ij.plugin.BrowserLauncher", url);
 		else if (url.endsWith(".txt")||url.endsWith(".ijm")||url.endsWith(".js")||url.endsWith(".java"))
 			openTextFile(url, false);

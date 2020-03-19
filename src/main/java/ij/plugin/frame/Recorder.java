@@ -82,9 +82,8 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 		textArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
 		if (IJ.isLinux()) textArea.setBackground(Color.white);
 		add("Center", textArea);
-		GUI.scale(this);
 		pack();
-		GUI.centerOnImageJScreen(this);
+		GUI.center(this);
 		if (showFrame)
 			show();
 		IJ.register(Recorder.class);
@@ -106,6 +105,7 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 		boolean isMacro = threadName.startsWith("Run$_");
 		if (threadName.contains("Popup Menu") || threadName.contains("Developer Menu"))
 			isMacro = false;
+		//IJ.log("setCommand: "+command+"  "+threadName+"  "+isMacro);
 		if (textArea==null || (isMacro&&!recordInMacros))
 			return;
 		commandName = command;
@@ -129,6 +129,8 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 
 	/** Replaces '\' characters with '/'. */
 	static String fixPath (String path) {
+		if (path==null)
+			path = "";
 		if (!IJ.isWindows())
 			return path;
 		StringBuilder sb = new StringBuilder();
@@ -284,7 +286,8 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 	}
 
 	public static void record(String method, String path, String args, int a1, int a2, int a3, int a4, int a5) {
-		if (textArea==null) return;
+		if (textArea==null)
+			return;
 		path = fixPath(path);
 		method = "//"+method;
 		textArea.append(method+"(\""+path+"\", "+"\""+args+"\", "+a1+", "+a2+", "+a3+", "+a4+", "+a5+");\n");
@@ -294,12 +297,8 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 		if (textArea!=null)
 			textArea.append(str);
 	}
-	
-	public static void recordCall(String call) {
-		recordCall(call, false);
-	}
 
-	public static void recordCall(String call, boolean recordCommand) {
+	public static void recordCall(String call) {
 		if (IJ.debugMode) IJ.log("recordCall: "+call+"  "+commandName);
 		boolean isMacro = Thread.currentThread().getName().endsWith("Macro$") && !recordInMacros;
 		if (textArea!=null && scriptMode && !IJ.macroRunning() && !isMacro) {
@@ -310,8 +309,7 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 			if (javaMode() && call.startsWith("rt = "))
 				call = "ResultTable " + call;
 			textArea.append(call+"\n");
-			if (!recordCommand)
-				commandName = null;
+			commandName = null;
  		}
 	}
 	
@@ -411,26 +409,6 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 			commandOptions += " "+key+"="+value;
 	}
 
-	public static void recordOpen(String path) {
-		if (!record || path==null)
-			return;
-		path = fixPath(path);
-		String s = scriptMode?"imp = IJ.openImage":"open";
-		boolean openingLut = false;
-		if (scriptMode) {
-			if (isTextOrTable(path))
-				s = "IJ.open";
-			else if (path!=null && path.endsWith(".lut")) {
-				s = "lut = Opener.openLut";
-				openingLut = true;
-			}
-		}
-		textArea.append(s+"(\""+path+"\");\n");
-		ImagePlus imp = WindowManager.getCurrentImage();
-		if (openingLut && imp!=null && !imp.getTitle().endsWith(".lut"))
-			textArea.append("imp.setLut(lut);\n");
-	}
-	
 	public static void recordPath(String key, String path) {
 		if (key==null || !recordPath) {
 			recordPath = true;
@@ -488,14 +466,10 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 	/** Writes the current command and options to the Recorder window. */
 	public static void saveCommand() {
 		String name = commandName;
-		//IJ.log("saveCommand: "+name+"  "+isSaveAs()+" "+scriptMode+"  "+commandOptions);
+		//IJ.log("saveCommand: "+name+"  "+scriptMode+"  "+commandOptions);
 		if (name!=null) {
-			if (commandOptions==null && (name.equals("Fill")||name.equals("Clear")||name.equals("Draw"))) {
-				ImagePlus imp = WindowManager.getCurrentImage();
-				Roi roi = imp!=null?imp.getRoi():null;
-				if (!(roi!=null && (roi instanceof TextRoi) && (name.equals("Draw"))))
-					commandOptions = "slice";
-			}
+			if (commandOptions==null && (name.equals("Fill")||name.equals("Clear")||name.equals("Draw")))
+				commandOptions = "slice";
 			if (!fgColorSet && (name.equals("Fill")||name.equals("Draw")))
 				setForegroundColor(Toolbar.getForegroundColor());
 			else if (!bgColorSet && (name.equals("Clear")||name.equals("Clear Outside")))
@@ -506,17 +480,29 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 			if (name.equals("Add Shortcut by Name... "))
 				name = "Add Shortcut... ";
 			if (commandOptions!=null) {
-				if (name.equals("Open...") || name.equals("URL..."))
-					recordOpen(strip(commandOptions));
-				else if (name.equals("TIFF Virtual Stack...") && scriptMode) {
+				if (name.equals("Open...") || name.equals("URL...")) {
+					String s = scriptMode?"imp = IJ.openImage":"open";
+					String path = strip(commandOptions);
+					boolean openingLut = false;
+					if (scriptMode) {
+						if (isTextOrTable(commandOptions))
+							s = "IJ.open";
+						else if (path!=null && path.endsWith(".lut")) {
+							s = "lut = Opener.openLut";
+							openingLut = true;
+						}
+					}
+					textArea.append(s+"(\""+path+"\");\n");
+					ImagePlus imp = WindowManager.getCurrentImage();
+					if (openingLut && imp!=null && !imp.getTitle().endsWith(".lut"))
+						textArea.append("imp.setLut(lut);\n");
+				} else if (name.equals("TIFF Virtual Stack...") && scriptMode) {
 					String s = "imp = IJ.openVirtual";
 					String path = strip(commandOptions);
 					textArea.append(s+"(\""+path+"\");\n");
 				} else if (isSaveAs()) {
 							if (name.endsWith("..."))
 									name= name.substring(0, name.length()-3);
-							if (name.equals("Save"))
-								name = "Tiff";
 							String path = strip(commandOptions);
 							String s = scriptMode?"IJ.saveAs(imp, ":"saveAs(";
 							textArea.append(s+"\""+name+"\", \""+path+"\");\n");
@@ -539,15 +525,8 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 				else if (scriptMode && name.equals("Text Image... ")) // File>Import>Text Image
 					;
 				else {
-					if (name.equals("Calibrate...")) {
-						if (commandOptions.startsWith("function=None unit=[Gray Value]"))
-							commandOptions = commandOptions.substring(0,13);
-						else if (commandOptions.startsWith("function=None")) {
-							int index = commandOptions.indexOf(" text1=");
-							if (index>0)
-								commandOptions = commandOptions.substring(0,index);
-						}
-					}
+					if (name.equals("Calibrate...")&&commandOptions.startsWith("function=None"))
+						commandOptions = commandOptions.substring(0,13);
 					String prefix = "run(";
 					if (scriptMode) {
 						boolean addImp = imageUpdated || (WindowManager.getCurrentImage()!=null
@@ -631,8 +610,7 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 			|| commandName.equals("Selection...")
 			|| commandName.equals("XY Coordinates...")
 			//|| commandName.equals("Results...")
-			|| commandName.equals("Text... ")
-			|| commandName.equals("Save");
+			|| commandName.equals("Text... ");
 	}
 
 	static void appendNewImage(boolean hyperstack) {
@@ -680,6 +658,8 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 	}
 
 	static String addQuotes(String value) {
+		if (value==null)
+			value = "";
 		int index = value.indexOf(' ');
 		if (index>-1)
 			value = "["+value+"]";
@@ -687,13 +667,8 @@ public class Recorder extends PlugInFrame implements PlugIn, ActionListener, Ima
 	}
 	
 	/** Used by GenericDialog to determine if any options have been recorded. */
-	public static String getCommandOptions() {
+	static public String getCommandOptions() {
 		return commandOptions;
-	}
-
-	/** Used by GenericDialog.notifyListeners() to clear the command options. */
-	public static void resetCommandOptions() {
-		commandOptions = null;
 	}
 
 	void createMacro() {

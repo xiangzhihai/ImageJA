@@ -94,7 +94,6 @@ public class CompositeImage extends ImagePlus {
 			setOpenAsHyperStack(true);
 	}
 
-	@Override
 	public Image getImage() {
 		if (img==null)
 			updateImage();
@@ -210,12 +209,10 @@ public class CompositeImage extends ImagePlus {
 			if (newChannel) {
 				setupLuts(nChannels);
 				LUT cm = lut[currentChannel];
-				if (ip!=null && !(ip instanceof ColorProcessor)) {
-					if (mode==COLOR)
-						ip.setLut(cm);
-					if (!(cm.min==0.0&&cm.max==0.0))
-						ip.setMinAndMax(cm.min, cm.max);
-				}
+				if (mode==COLOR)
+					ip.setLut(cm);
+				if (!(cm.min==0.0&&cm.max==0.0))
+					ip.setMinAndMax(cm.min, cm.max);
 				if (!IJ.isMacro()) ContrastAdjuster.update();
 				for (int i=0; i<MAX_CHANNELS; i++)
 					active[i] = i==currentChannel?true:false;

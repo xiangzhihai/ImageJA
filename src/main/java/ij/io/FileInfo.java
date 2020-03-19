@@ -94,7 +94,8 @@ public class FileInfo implements Cloneable {
 	public int fileFormat;
 	
 	/* File type (GRAY8, GRAY_16_UNSIGNED, RGB, etc.) */
-	public int fileType;	
+	public int fileType;
+	
 	public String fileName;
 	public String directory;
 	public String url;
@@ -102,7 +103,7 @@ public class FileInfo implements Cloneable {
     public int height;
     public int offset=0;  // Use getOffset() to read
     public int nImages;
-    public int gapBetweenImages;   // Use getGap() to read
+    public int gapBetweenImages;
     public boolean whiteIsZero;
     public boolean intelByteOrder;
 	public int compression;
@@ -119,7 +120,6 @@ public class FileInfo implements Cloneable {
 	public String info;
 	public InputStream inputStream;
 	public VirtualStack virtualStack;
-	public int sliceNumber; // used by FileInfoVirtualStack
 	
 	public double pixelWidth=1.0;
 	public double pixelHeight=1.0;
@@ -132,8 +132,6 @@ public class FileInfo implements Cloneable {
 	public String description;
 	// Use <i>longOffset</i> instead of <i>offset</i> when offset>2147483647.
 	public long longOffset;  // Use getOffset() to read
-	// Use <i>longGap</i> instead of <i>gapBetweenImages</i> when gap>2147483647.
-	public long longGap;  // Use getGap() to read
 	// Extra metadata to be stored in the TIFF header
 	public int[] metaDataTypes; // must be < 0xffffff
 	public byte[][] metaData;
@@ -158,26 +156,11 @@ public class FileInfo implements Cloneable {
 		samplesPerPixel = 1;
     }
     
-     /** Returns the file path. */
-	public String getFilePath() {
-		String dir = directory;
-		if (dir==null)
-			dir = "";
-		if (dir.length()>0 && !(dir.endsWith(File.separator)||dir.endsWith("/")))
-			dir += "/";
-		return dir + fileName;
-	}
-
-   /** Returns the offset as a long. */
+    /** Returns the offset as a long. */
     public final long getOffset() {
     	return longOffset>0L?longOffset:((long)offset)&0xffffffffL;
     }
     
-    /** Returns the gap between images as a long. */
-    public final long getGap() {
-    	return longGap>0L?longGap:((long)gapBetweenImages)&0xffffffffL;
-    }
-
 	/** Returns the number of bytes used per pixel. */
 	public int getBytesPerPixel() {
 		switch (fileType) {
@@ -199,7 +182,6 @@ public class FileInfo implements Cloneable {
 			+ ", height=" + height
 			+ ", nImages=" + nImages
 			+ ", offset=" + getOffset()
-			+ ", gap=" + getGap()
 			+ ", type=" + getType()
 			+ ", byteOrder=" + (intelByteOrder?"little":"big")
 			+ ", format=" + fileFormat

@@ -17,6 +17,7 @@ public class Tokenizer implements MacroConstants {
         if (program.contains("/*") && program.contains("*/"))
             program = addSpacesToEmptyLines(program);
         st = new StreamTokenizer(new StringReader(program));
+        //st.eolIsSignificant(true);
         st.ordinaryChar('-');
         st.ordinaryChar('/');
         st.ordinaryChar('.');
@@ -31,7 +32,6 @@ public class Tokenizer implements MacroConstants {
         } while (token!=EOF);
         if (pgm.hasFunctions)
         	addUserFunctions();
-		//IJ.log(program.length()+" "+pgm.getSize()+" "+IJ.d2s((double)program.length()/pgm.getSize(),1)+" "+program.length()/10);
         return pgm;
     }
 

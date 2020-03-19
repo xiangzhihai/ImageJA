@@ -43,7 +43,6 @@ public class Options implements PlugIn {
 			gd.addCheckbox("Don't set Mac menu bar", !Prefs.setIJMenuBar);
 		if (IJ.isLinux())
 			gd.addCheckbox("Save window locations", !Prefs.doNotSaveWindowLocations);
-		gd.addCheckbox("Non-blocking filter dialogs", Prefs.nonBlockingFilterDialogs);
 		gd.addCheckbox("Debug mode", IJ.debugMode);
 		gd.addHelp(IJ.URL+"/docs/menus/edit.html#misc");
 		gd.showDialog();
@@ -78,7 +77,6 @@ public class Options implements PlugIn {
 			Prefs.setIJMenuBar = !gd.getNextBoolean();
 		if (IJ.isLinux())
 			Prefs.doNotSaveWindowLocations = !gd.getNextBoolean();
-		Prefs.nonBlockingFilterDialogs = gd.getNextBoolean();
 		IJ.setDebugMode(gd.getNextBoolean());
 	}
 
@@ -178,7 +176,7 @@ public class Options implements PlugIn {
 	void dicom() {
 		GenericDialog gd = new GenericDialog("DICOM Options");
 		gd.addCheckbox("Open as 32-bit float", Prefs.openDicomsAsFloat);
-		gd.addCheckbox("Ignore Rescale Slope", Prefs.ignoreRescaleSlope);
+		//gd.addCheckbox("Calculate voxel depth", Prefs.calculateDicomVoxelDepth);
 		gd.addMessage("Orthogonal Views");
 		gd.setInsets(5, 40, 0);
 		gd.addCheckbox("Rotate YZ", Prefs.rotateYZ);
@@ -188,7 +186,7 @@ public class Options implements PlugIn {
 		if (gd.wasCanceled())
 			return;
 		Prefs.openDicomsAsFloat = gd.getNextBoolean();
-		Prefs.ignoreRescaleSlope = gd.getNextBoolean();
+		//Prefs.calculateDicomVoxelDepth = gd.getNextBoolean();
 		Prefs.rotateYZ = gd.getNextBoolean();
 		Prefs.flipXZ = gd.getNextBoolean();
 	}

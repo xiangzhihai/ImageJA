@@ -45,8 +45,6 @@ public class SpecifyROI implements PlugIn, DialogListener {
 	public void run(String arg) {
 		imp = IJ.getImage();
 		if (imp == null) return;
-		if (!imp.okToDeleteRoi())
-			return;
 		stackSize = imp.getStackSize();
 		Roi roi = imp.getRoi();
 		Calibration cal = imp.getCalibration();

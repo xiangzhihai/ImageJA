@@ -15,19 +15,16 @@ public class PointToolOptions implements PlugIn, DialogListener {
 	private boolean multipointTool;
 	private boolean isMacro;
 	
-	public static final String help = "<html>"
+	private static final String help = "<html>"
 	+"<h1>Point Tool</h1>"
 	+"<font size=+1>"
 	+"<ul>"
-	+"<li> Click on a point and drag to move it.<br>"
 	+"<li> Alt-click, or control-click, on a point to delete it.<br>"
 	+"<li> Press 'alt+y' (<i>Edit&gt;Selection&gt;Properties</i> plus<br>alt key) to display the counts in a results table.<br>"
 	+"<li> Press 'm' (<i>Analyze&gt;Measure</i>) to list the counter<br>and stack position associated with each point.<br>"
 	+"<li> Use <i>File&gt;Save As&gt;Tiff</i> or <i>File&gt;Save As&gt;Selection</i><br>to save the points and counts.<br>"
 	+"<li> Press 'F' (<i>Image&gt;Overlay</i>&gt;Flatten</i>) to create an<br>RGB image with embedded markers for export.<br>"
 	+"<li> Hold the shift key down and points will be<br>constrained to a horizontal or vertical line.<br>"
-	+"<li> Use <i>Edit&gt;Selection&gt;Select None</i> to delete a<br>multi-point selection.<br>"
-	+"<li> Switch to the multi-point tool and use<br><i>Edit&gt;Selection&gt;Restore Selection</i> to restore<br>a deleted multi-point selection.<br>"
 	+"</ul>"
 	+" <br>"
 	+"</font>";
@@ -47,6 +44,7 @@ public class PointToolOptions implements PlugIn, DialogListener {
 		if (isMacro) {
 			options = options.replace("selection=", "color=");
 			options = options.replace("marker=", "size=");
+			options = options.replace("type=Crosshair", "type=Cross");
 			Macro.setOptions(options);
 			legacyMacro = options.contains("auto-") || options.contains("add");
 		}
@@ -60,7 +58,7 @@ public class PointToolOptions implements PlugIn, DialogListener {
 		String type = PointRoi.types[PointRoi.getDefaultType()];
 		String size = PointRoi.sizes[PointRoi.getDefaultSize()];
 		if (multipointTool)
-			gd = NonBlockingGenericDialog.newDialog("Point Tool");
+			gd = new NonBlockingGenericDialog("Point Tool");
 		else
 			gd = new GenericDialog("Point Tool");
 		gd.setInsets(5,0,2);
@@ -86,6 +84,8 @@ public class PointToolOptions implements PlugIn, DialogListener {
 		gd.addHelp(help);
 		gd.addDialogListener(this);
 		gd.showDialog();
+		if (gd.wasCanceled()) {
+		}
 	}
 	
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e) {
@@ -102,8 +102,7 @@ public class PointToolOptions implements PlugIn, DialogListener {
 		if (sc!=Roi.getColor()) {
 			Roi.setColor(sc);
 			redraw = true;
-			Toolbar tb = Toolbar.getInstance();
-			if (tb!=null) tb.repaint();
+			Toolbar.getInstance().repaint();
 		}
 		// size
 		int sizeIndex = gd.getNextChoiceIndex();
@@ -145,7 +144,6 @@ public class PointToolOptions implements PlugIn, DialogListener {
 				roi.setPointType(typeIndex);
 				roi.setStrokeColor(sc);
 				roi.setSize(sizeIndex);
-				redraw = true;
 			}
 		}
 		if (redraw) {

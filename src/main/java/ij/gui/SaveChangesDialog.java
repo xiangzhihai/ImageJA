@@ -51,7 +51,7 @@ public class SaveChangesDialog extends Dialog implements ActionListener, KeyList
 		if (ij.IJ.isMacintosh())
 			setResizable(false);
 		pack();
-		GUI.centerOnImageJScreen(this);
+		GUI.center(this);
 		show();
 	}
     

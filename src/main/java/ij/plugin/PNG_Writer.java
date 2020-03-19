@@ -35,24 +35,17 @@ public class PNG_Writer implements PlugIn {
             String msg = e.getMessage();
             if (msg==null || msg.equals(""))
                 msg = ""+e;
-            msg = "An error occured writing the file.\n \n" + msg;
-            if (msg.contains("NullPointerException"))
-            	msg = "Incorrect file path: \""+path+"\"";
-            IJ.error("PNG Writer", msg);
+            IJ.error("PNG Writer", "An error occured writing the file.\n \n" + msg);
         }
         IJ.showStatus("");
     }
 
 	public void writeImage(ImagePlus imp, String path, int transparentIndex) throws Exception {
-		if (imp.getType()==ImagePlus.COLOR_256) {
-			imp = imp.duplicate();
-			new ImageConverter(imp).convertToRGB();
-		}
 		if (imp.getStackSize()==4 && imp.getBitDepth()==8 && "alpha".equalsIgnoreCase(imp.getStack().getSliceLabel(4)))
 			writeFourChannelsWithAlpha(imp, path);
 		else if (transparentIndex>=0 && transparentIndex<=255 && imp.getBitDepth()==8)
 			writeImageWithTransparency(imp, path, transparentIndex);
-		else if (imp.getOverlay()!=null && !imp.getHideOverlay() && !imp.tempOverlay())
+		else if (imp.getOverlay()!=null && !imp.getHideOverlay())
 			ImageIO.write(imp.flatten().getBufferedImage(), "png", new File(path));
 		else if (imp.getBitDepth()==16 && !imp.isComposite() && imp.getProcessor().isDefaultLut())
 			write16gs(imp, path);

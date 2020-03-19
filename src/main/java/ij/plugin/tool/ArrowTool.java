@@ -19,8 +19,7 @@ public class ArrowTool extends PlugInTool {
 		int handle = roi!=null?roi.isHandle(ox, oy):-1;
 		if (!(roi!=null && (roi instanceof Arrow) && (handle>=0||roi.contains(ox,oy)))) {
 			arrow = new Arrow(sx, sy, imp);
-			if (imp.okToDeleteRoi())
-				imp.setRoi(arrow, false);
+			imp.setRoi(arrow, false);
 			e.consume();
 		}
 	}

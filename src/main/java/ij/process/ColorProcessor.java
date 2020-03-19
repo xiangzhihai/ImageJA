@@ -75,7 +75,6 @@ public class ColorProcessor extends ImageProcessor {
 		if (image==null) {
 			image = new BufferedImage(cm, rgbRaster, false, null);
 		}
-		//ij.IJ.log("image: "+image);
 		return image;
 	}
 
@@ -114,20 +113,17 @@ public class ColorProcessor extends ImageProcessor {
 	public void setColor(Color color) {
 		fgColor = color.getRGB();
 		drawingColor = color;
-		fillValueSet = true;
 	}
 
 
 	/** Sets the fill/draw color, where <code>color</code> is an RGB int. */
 	public void setColor(int color) {
 		fgColor = color;
-		fillValueSet = true;
 	}
 
 	/** Sets the default fill/draw value, where <code>value</code> is interpreted as an RGB int. */
 	public void setValue(double value) {
 		fgColor = (int)value;
-		fillValueSet = true;
 	}
 
 	/** Sets the background fill value, where <code>value</code> is interpreted as an RGB int. */
@@ -400,7 +396,7 @@ public class ColorProcessor extends ImageProcessor {
 				return (float)(r*rWeight + g*gWeight + b*bWeight);
 		}
 		else 
-			return Float.NaN;
+			return 0;
 	}
 
 

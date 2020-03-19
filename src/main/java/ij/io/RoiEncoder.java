@@ -15,7 +15,7 @@ import java.awt.geom.*;
 public class RoiEncoder {
 	static final int HEADER_SIZE = 64;
 	static final int HEADER2_SIZE = 64;
-	static final int VERSION = 228; // v1.52t (roi groups, scale stroke width)
+	static final int VERSION = 227; // v1.50d (point counters)
 	private String path;
 	private OutputStream f;
 	private final int polygon=0, rect=1, oval=2, line=3, freeline=4, polyline=5, noRoi=6, freehand=7, 
@@ -84,8 +84,6 @@ public class RoiEncoder {
 		int roiType = roi.getType();
 		int type = rect;
 		int options = 0;
-		if (roi.getScaleStrokeWidth())
-			options |= RoiDecoder.SCALE_STROKE_WIDTH;
 		roiName = roi.getName();
 		if (roiName!=null)
 			roiNameSize = roiName.length()*2;
@@ -170,7 +168,7 @@ public class RoiEncoder {
 				putShort(RoiDecoder.OPTIONS, options);
 			}
 		}
-		if (n>65535 && type!=point) {
+		if (n>65535) {
 			if (type==polygon || type==freehand || type==traced) {
 				String name = roi.getName();
 				roi = new ShapeRoi(roi);
@@ -182,10 +180,7 @@ public class RoiEncoder {
 			ij.IJ.log("Non-polygonal selections with more than 65k points cannot be saved.");
 			n = 65535;
 		}
-		if (type==point && n>65535)
-			putInt(RoiDecoder.SIZE, n);
-		else 
-			putShort(RoiDecoder.N_COORDINATES, n);
+		putShort(RoiDecoder.N_COORDINATES, n);
 		putInt(RoiDecoder.POSITION, roi.getPosition());
 		
 		if (type==rect) {
@@ -221,8 +216,6 @@ public class RoiEncoder {
 			putShort(RoiDecoder.STROKE_WIDTH, point.getSize());
 			if (point.getShowLabels())
 				options |= RoiDecoder.SHOW_LABELS;
-			if (point.promptBeforeDeleting())
-				options |= RoiDecoder.PROMPT_BEFORE_DELETING;
 		}
 
 		if (roi instanceof RotatedRectRoi || roi instanceof EllipseRoi) {
@@ -335,8 +328,6 @@ public class RoiEncoder {
 		Font font = proto.getLabelFont();
 		if (font!=null && font.getStyle()==Font.BOLD)
 			options |= RoiDecoder.OVERLAY_BOLD;
-		if (proto.scalableLabels())
-			options |= RoiDecoder.SCALE_LABELS;
 		putShort(RoiDecoder.OPTIONS, options);
 	}
 	
@@ -412,7 +403,6 @@ public class RoiEncoder {
 			putProps(roi, hdr2Offset);
 		if (countersSize>0)
 			putPointCounters(roi, hdr2Offset);
-		putByte(hdr2Offset+RoiDecoder.GROUP, roi.getGroup());
 	}
 
 	void putName(Roi roi, int hdr2Offset) {

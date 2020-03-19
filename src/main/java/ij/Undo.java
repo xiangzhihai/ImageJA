@@ -12,11 +12,14 @@ import java.awt.image.*;
 public class Undo {
 
 	public static final int NOTHING = 0;
+	/** Undo using ImageProcessor.snapshot. */
 	public static final int FILTER = 1;
+	/** Undo using an ImageProcessor copy. */
 	public static final int TYPE_CONVERSION = 2;
 	public static final int PASTE = 3;
 	public static final int COMPOUND_FILTER = 4;
 	public static final int COMPOUND_FILTER_DONE = 5;
+	/** Undo using a single image, or composite color stack, copy (limited to 200MB). */
 	public static final int TRANSFORM = 6;
 	public static final int OVERLAY_ADDITION = 7;
 	public static final int ROI = 8;
@@ -51,24 +54,13 @@ public class Undo {
 			ipCopy = imp.getProcessor();
 			calCopy = (Calibration)imp.getCalibration().clone();
 		} else if (what==TRANSFORM) {	
-<<<<<<< HEAD
-<<<<<<< HEAD
 			if ((!IJ.macroRunning()||Prefs.supportMacroUndo) && (imp.getStackSize()==1||imp.getDisplayMode()==IJ.COMPOSITE) && imp.getSizeInBytes()<209715200)
-				impCopy = imp.duplicate();
+				impCopy = imp.duplicateAll();
 			else
 				reset();
-=======
-			if (!IJ.macroRunning())
-				impCopy = new ImagePlus(imp.getTitle(), imp.getProcessor().duplicate());
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-=======
-			if (!IJ.macroRunning())
-				impCopy = new ImagePlus(imp.getTitle(), imp.getProcessor().duplicate());
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		} else if (what==MACRO) {	
-			ipCopy = imp.getProcessor().duplicate();
-			calCopy = (Calibration)imp.getCalibration().clone();
-			impCopy = null;
+			impCopy = new ImagePlus(imp.getTitle(), imp.getProcessor().duplicate());
+			whatToUndo = TRANSFORM;
 		} else if (what==COMPOUND_FILTER) {
 			ImageProcessor ip = imp.getProcessor();
 			if (ip!=null)
@@ -95,6 +87,7 @@ public class Undo {
 	}
 		
 	public static void reset() {
+		if (IJ.debugMode) IJ.log("Undo.reset: "+ whatToUndo+" "+impCopy);
 		if (whatToUndo==COMPOUND_FILTER || whatToUndo==OVERLAY_ADDITION)
 			return;
 		whatToUndo = NOTHING;
@@ -104,20 +97,12 @@ public class Undo {
 		calCopy = null;
 		roiCopy = null;
 		lutCopy = null;
-<<<<<<< HEAD
-<<<<<<< HEAD
-	}	
-=======
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-		//if (IJ.debugMode) IJ.log("Undo.reset");
 	}
 	
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 
 	public static void undo() {
 		ImagePlus imp = WindowManager.getCurrentImage();
-		if (IJ.debugMode) IJ.log("Undo.undo: "+ whatToUndo+" "+imp+" "+imageID);
+		if (IJ.debugMode) IJ.log("Undo.undo: "+ whatToUndo+" "+imp+"  "+impCopy);
 		if (imp==null || imageID!=imp.getID()) {
 			if (imp!=null && !IJ.macroRunning()) { // does image still have an undo buffer?
 				ImageProcessor ip2 = imp.getProcessor();
@@ -133,8 +118,6 @@ public class Undo {
 				if (ip!=null) {
 					if (!IJ.macroRunning()) {
 						ip.swapPixelArrays();
-						//IJ.log("undo-filter: "+displayRangeMin+" "+displayRangeMax);
-						//ip.setMinAndMax(displayRangeMin,displayRangeMax);
 						imp.updateAndDraw();
 						return; // don't reset
 					} else {
@@ -158,7 +141,7 @@ public class Undo {
 				break;
 			case TRANSFORM:
 				if (impCopy!=null)
-					imp.setProcessor(impCopy.getTitle(), impCopy.getProcessor());
+					imp.setStack(impCopy.getStack());
 				break;
 			case PASTE:
 				Roi roi = imp.getRoi();
@@ -170,12 +153,6 @@ public class Undo {
 				setup(ROI, imp); // setup redo
 				imp.setRoi(roiCopy2);
 				return; //don't reset
-			case MACRO:
-				if (ipCopy!=null) {
-					imp.setProcessor(ipCopy);
-					if (calCopy!=null) imp.setCalibration(calCopy);
-				}
-				break;
 			case OVERLAY_ADDITION:
 				Overlay overlay = imp.getOverlay();
 				if (overlay==null) 

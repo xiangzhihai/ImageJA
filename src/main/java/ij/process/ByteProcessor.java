@@ -317,14 +317,13 @@ public class ByteProcessor extends ImageProcessor {
 			else
 				return cTable[pixels[y*width + x]&0xff];
 		} else
-			return Float.NaN;
+			return 0f;
 	}
 
 	/** Sets the foreground drawing color. */
 	public void setColor(Color color) {
 		drawingColor = color;
 		fgColor = getBestIndex(color);
-		fillValueSet = true;
 	}
 
 	/** Sets the default fill/draw value, where 0<=value<=255. */
@@ -332,7 +331,6 @@ public class ByteProcessor extends ImageProcessor {
 		fgColor = (int)value;
 		if (fgColor<0) fgColor = 0;
 		if (fgColor>255) fgColor = 255;
-		fillValueSet = true;
 	}
 
 	/** Sets the background fill value, where 0<=value<=255. */
@@ -425,8 +423,8 @@ public class ByteProcessor extends ImageProcessor {
 	public void setMinAndMax(double min, double max) {
 		if (max<min)
 			return;
-		this.min = (int)Math.round(min);
-		this.max = (int)Math.round(max);
+		this.min = (int)min;
+		this.max = (int)max;
 		if (rLUT1==null) {
 			if (cm==null)
 				makeDefaultColorModel();

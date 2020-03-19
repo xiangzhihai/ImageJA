@@ -1,7 +1,6 @@
 package ij.gui;
 import java.awt.*;
 import java.awt.image.*;
-import java.awt.event.*;
 import ij.*;
 import ij.plugin.frame.Recorder;
 import ij.process.FloatPolygon;
@@ -28,25 +27,26 @@ public class EllipseRoi extends PolygonRoi {
 	public EllipseRoi(int sx, int sy, ImagePlus imp) {
 		super(sx, sy, imp);
 		type = FREEROI;
-		xstart = offScreenXD(sx);
-		ystart = offScreenYD(sy);
+		xstart = ic.offScreenXD(sx);
+		ystart = ic.offScreenYD(sy);
 		setDrawOffset(false);
 		bounds = null;
 	}
 
 	public void draw(Graphics g) {
 		super.draw(g);
+		int size2 = HANDLE_SIZE/2;
 		if (!overlay) {
 			for (int i=0; i<handle.length; i++)
-				drawHandle(g, xp2[handle[i]], yp2[handle[i]]);
+				drawHandle(g, xp2[handle[i]]-size2, yp2[handle[i]]-size2);
 		}
 	}
 
 	protected void grow(int sx, int sy) {
 		double x1 = xstart;
 		double y1 = ystart;
-		double x2 = offScreenXD(sx);
-		double y2 = offScreenYD(sy);
+		double x2 = ic.offScreenXD(sx);
+		double y2 = ic.offScreenYD(sy);
 		makeEllipse(x1, y1, x2, y2);
 		imp.draw();
 	}
@@ -77,45 +77,6 @@ public class EllipseRoi extends PolygonRoi {
 		}
 		makePolygonRelative();
 		cachedMask = null;
-		showStatus();
-	}
-	
-	public void showStatus() {
-		double[] p = getParams();
-		double dx = p[2] - p[0];
-		double dy = p[3] - p[1];
-		double major = Math.sqrt(dx*dx+dy*dy);
-		double minor = major*p[4];
-		double angle = getFloatAngle(p[0], p[1], p[2], p[3]);
-		if (imp!=null && !IJ.altKeyDown()) {
-			Calibration cal = imp.getCalibration();
-			if (cal.scaled()) {
-				dx *= cal.pixelWidth;
-				dy *= cal.pixelHeight;
-				major = Math.sqrt(dx*dx+dy*dy);
-				minor = major*p[4];
-			}
-		}
-		IJ.showStatus("major=" + IJ.d2s(major)+", minor=" + IJ.d2s(minor)+", angle=" + IJ.d2s(angle));
-	}
-
-	public void nudgeCorner(int key) {
-		if (ic==null) return;
-		double x1 = xpf[handle[2]]+x;
-		double y1 = ypf[handle[2]]+y;
-		double x2 = xpf[handle[0]]+x;
-		double y2 = ypf[handle[0]]+y;
-		double inc = 1.0/ic.getMagnification();
-		switch(key) {
-			case KeyEvent.VK_UP: y2-=inc; break;
-			case KeyEvent.VK_DOWN: y2+=inc; break;
-			case KeyEvent.VK_LEFT: x2-=inc; break;
-			case KeyEvent.VK_RIGHT: x2+=inc; break;
-		}
-		makeEllipse(x1, y1, x2, y2);
-		imp.draw();
-		notifyListeners(RoiListener.MOVED);
-		showStatus();
 	}
 
 	void makePolygonRelative() {
@@ -149,8 +110,8 @@ public class EllipseRoi extends PolygonRoi {
 	}
 	
 	protected void moveHandle(int sx, int sy) {
-		double ox = offScreenXD(sx); 
-		double oy = offScreenYD(sy);
+		double ox = ic.offScreenXD(sx); 
+		double oy = ic.offScreenYD(sy);
 		double x1 = xpf[handle[2]]+x;
 		double y1 = ypf[handle[2]]+y;
 		double x2 = xpf[handle[0]]+x;
@@ -189,7 +150,7 @@ public class EllipseRoi extends PolygonRoi {
 	}
 	
 	public int isHandle(int sx, int sy) {
-		int size = getHandleSize()+5;
+		int size = HANDLE_SIZE+5;
 		int halfSize = size/2;
 		int index = -1;
 		for (int i=0; i<handle.length; i++) {
@@ -242,22 +203,13 @@ public class EllipseRoi extends PolygonRoi {
 			pw = cal.pixelWidth;
 			ph = cal.pixelHeight;
 		}
-		if (pw != ph)    //the following calculation holds only for pixel aspect ratio == 1 (otherwise different axes in distorted ellipse)
-			return a;
 		double[] p = getParams();
-		double dx = p[2] - p[0];  //this is always major axis; aspect ratio p[4] is limited to <= 1
-		double dy = p[3] - p[1];
-		double major = Math.sqrt(dx*dx + dy*dy);
+		double dx = (p[2] - p[0])*pw;
+		double dy = (p[3] - p[1])*ph;
+		double major = Math.sqrt(dx*dx+dy*dy);
 		double minor = major*p[4];
-		a[0] = major*pw; //Feret from convex hull should be accurate anyhow
-		a[2] = minor*pw; //here our own calculation is better
-		System.arraycopy(p, 0, a, 8, 4);  //MaxFeret endpoints
-		double xCenter = 0.5*(p[2] + p[0]);
-		double yCenter = 0.5*(p[3] + p[1]);
-		double semiMinorX = dy * 0.5 * p[4];
-		double semiMinorY = dx * (-0.5) * p[4];
-		a[12] = xCenter + semiMinorX; a[14] = xCenter - semiMinorX;
-		a[13] = yCenter + semiMinorY; a[15] = yCenter - semiMinorY;
+		a[0] = major;
+		a[2] = (pw==ph)?minor:a[2];
 		return a;
 	}
 	

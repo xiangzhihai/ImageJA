@@ -35,13 +35,7 @@ public class ImageJ_Updater implements PlugIn {
 			return;
 		}
 		if (!file.canWrite()) {
-			String path = file.getPath();
-			String msg = "No write access: "+path;
-			if (IJ.isMacOSX() && path!=null && path.startsWith("/private/var/folders/")) {
-				msg = "ImageJ is in a read-only folder due to Path Randomization.\n"
-				+ "To work around this problem, drag ImageJ.app to another\n"
-				+ "folder and then (optionally) drag it back.";
-			}
+			String msg = "No write access: "+file.getPath();
 			error(msg);
 			return;
 		}

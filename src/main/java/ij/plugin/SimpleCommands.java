@@ -5,10 +5,7 @@ import ij.gui.*;
 import ij.io.Opener;
 import ij.text.TextWindow;
 import ij.measure.ResultsTable;
-import ij.plugin.frame.Editor;
-import java.awt.Desktop;
 import java.awt.Frame;
-import java.io.File;
 
 /** This plugin implements the Plugins/Utilities/Unlock, Image/Rename
 	and Plugins/Utilities/Search commands. */
@@ -25,7 +22,7 @@ public class SimpleCommands implements PlugIn {
 		else if (arg.equals("table")) 
 			Opener.openTable("");
 		else if (arg.equals("rename"))
-			rename();	
+			rename();
 		else if (arg.equals("reset"))
 			reset();
 		else if (arg.equals("about"))
@@ -48,20 +45,10 @@ public class SimpleCommands implements PlugIn {
 			showFonts();
 		else if (arg.equals("opencp"))
 			openControlPanel();
-<<<<<<< HEAD
-<<<<<<< HEAD
 		else if (arg.equals("magic"))
 			installMagicMontageTools();
-		else if (arg.equals("interactive"))
-			openInteractiveModeEditor();
-		else if (arg.startsWith("showdir"))
-			showDirectory(arg.replace("showdir", ""));
 		else if (arg.equals("measure"))
-			measureStack();
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+			IJ.runMacroFile("ij.jar:MeasureStack", null);
 	}
 	
 	private synchronized void showFonts() {
@@ -139,6 +126,11 @@ public class SimpleCommands implements PlugIn {
 	
 	private void setSliceLabel() {
 		ImagePlus imp = IJ.getImage();
+		int size = imp.getStackSize();
+		if (size==1) {
+			IJ.error("Stack required");
+			return;
+		}
 		ImageStack stack = imp.getStack();
 		int n = imp.getCurrentSlice();
 		String label = stack.getSliceLabel(n);
@@ -148,27 +140,26 @@ public class SimpleCommands implements PlugIn {
 		GenericDialog gd = new GenericDialog("Set Slice Label ("+n+")");
 		gd.addStringField("Label:", label2, 30);
 		gd.showDialog();
-		if (!gd.wasCanceled()) {
-			label2 = gd.getNextString();
-			if (label2!=label) {
-				if (label2.length()==0)
-					label2 = null;
-				stack.setSliceLabel(label2, n);
-				imp.setProperty("Label", label2);	
-				imp.repaintWindow();
-			}
+		if (gd.wasCanceled())
+			return;
+		label2 = gd.getNextString();
+		if (label2!=label) {
+			stack.setSliceLabel(label2, n);
+			imp.repaintWindow();
 		}
 	}
 
 	private void removeStackLabels() {
 		ImagePlus imp = IJ.getImage();
-		ImageStack stack = imp.getStack();
 		int size = imp.getStackSize();
-		for (int i=1; i<=size; i++)
-			stack.setSliceLabel(null, i);
 		if (size==1)
-			imp.setProperty("Label", null);				
-		imp.repaintWindow();
+			IJ.error("Stack required");
+		else {
+			ImageStack stack = imp.getStack();
+			for (int i=1; i<=size; i++)
+				stack.setSliceLabel(null, i);
+			imp.repaintWindow();
+		}
 	}
 	
 	private void imageToResults() {
@@ -202,8 +193,6 @@ public class SimpleCommands implements PlugIn {
 			"ImageJ folder and then copy it back. More information is at\n \n"+
 			IJ.URL+"/docs/install/osx.html#randomization");
 	}
-<<<<<<< HEAD
-<<<<<<< HEAD
 	
 	private void installMagicMontageTools() {
 		String name = "MagicMontageTools.txt";
@@ -216,62 +205,5 @@ public class SimpleCommands implements PlugIn {
 				mi.installFromIJJar(path);
 			} catch (Exception e) {}
 	}
-	
-	private void openInteractiveModeEditor() {
-		Editor ed = new Editor();
-		ed.setSize(600, 500);
-		ed.create(Editor.INTERACTIVE_NAME, "");
-	}
-	
-	private void showDirectory(String arg) {
-		arg = arg.toLowerCase();
-		String path = IJ.getDir(arg);
-		if (path == null) {
-			if (arg.equals("image")) {
-				if (WindowManager.getCurrentImage()==null)
-					IJ.noImage();
-				else
-					IJ.error("No file is associated with front image");
-			} else
-				IJ.error("Folder not found: " + arg);
-			return;
-		}		
-		File dir = new File(path);
-		if (!dir.exists()) {
-			IJ.error("Folder not found: " + arg);
-			return;
-		}
-		if (arg.equals("image")&& IJ.getImage() != null) {
-			File imgPath = new File(dir + File.separator + IJ.getImage().getTitle());
-			if (!imgPath.exists()) {
-				IJ.error("Image not found");
-				return;
-			}
-		}
-		if (IJ.debugMode) IJ.log("showDirectory: "+arg+", "+dir);
-		Desktop desktop = Desktop.getDesktop();
-		try {
-			desktop.open(dir);
-		} catch (Exception e) {
-			IJ.error("Failed to Show Folder: " + e.toString());
-			return;
-		}
-	}
-
-	private void measureStack() {
-		ImagePlus imp = IJ.getImage();
-		if (imp.isLocked()) {
-			IJ.showStatus("Image is locked: \""+imp.getTitle()+"\"");
-			IJ.beep();
-		} else
-			IJ.runMacroFile("ij.jar:MeasureStack", null);
-		return;
-	}
-
-=======
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-
 		
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 }

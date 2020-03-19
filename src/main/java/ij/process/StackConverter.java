@@ -259,7 +259,7 @@ public class StackConverter {
 		if (type!=ImagePlus.COLOR_RGB)
 			throw new IllegalArgumentException("RGB stack required");
 		ImageStack stack = imp.getStack();
-		int size = stack.size();
+		int size = stack.getSize();
 		ImageProcessor montage = new ColorProcessor(width*size, height);
         for (int i=0; i<size; i++)
             montage.insert(stack.getProcessor(i+1), i*width, 0);
@@ -271,7 +271,6 @@ public class StackConverter {
             stack2.addSlice(null, montage.crop());
         }
 		imp.setStack(null, stack2);
-		imp.setTypeToColor256();
 	}
 
 }

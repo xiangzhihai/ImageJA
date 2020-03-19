@@ -107,8 +107,6 @@ public class FolderOpener implements PlugIn {
 		}
 		if (directory==null)
 			return;
-		if (!(directory.endsWith("/")||directory.endsWith(File.separator)))
-			directory = directory + "/";
 		String[] list = (new File(directory)).list();
 		if (list==null) {
 			IJ.error("File>Import>Image Sequence", "Directory not found: "+directory);
@@ -179,7 +177,7 @@ public class FolderOpener implements PlugIn {
 				return;
 			IJ.showStatus("");
 			t0 = System.currentTimeMillis();
-			if (sortFileNames || dicomImages || IJ.isMacOSX())
+			if (sortFileNames || dicomImages)
 				list = StringSorter.sortNumerically(list);
 
 			if (n<1)
@@ -193,8 +191,6 @@ public class FolderOpener implements PlugIn {
 			ImagePlus imp = null;
 			boolean firstMessage = true;
 			boolean fileInfoStack = false;
-			
-			// open images as stack
 			for (int i=start-1; i<list.length; i++) {
 				if ((counter++%increment)!=0)
 					continue;
@@ -243,12 +239,10 @@ public class FolderOpener implements PlugIn {
 				if (stackSize==1) {
 					String info = (String)imp.getProperty("Info");
 					if (info!=null) {
-						if (useInfo(info))
-							label += "\n" + info;
-					} else {
-						String sliceLabel = imp.getStack().getSliceLabel(1);
-						if (useInfo(sliceLabel))
-							label =  sliceLabel;
+						if (info.length()>100 && info.indexOf('\n')>0)
+							label += "\n" + info;   // multi-line metadata
+						else
+							label = info;
 					}
 				}
 				if (Math.abs(imp.getCalibration().pixelWidth-cal.pixelWidth)>0.0000000001)
@@ -265,7 +259,8 @@ public class FolderOpener implements PlugIn {
 							roi.setPosition(count+1);
 						overlay.add(roi);
 					}
-				}				
+				}
+				
 				if (openAsVirtualStack) { 
 					if (fileInfoStack)
 						openAsFileInfoStack((FileInfoVirtualStack)stack, directory+list[i]);
@@ -278,8 +273,8 @@ public class FolderOpener implements PlugIn {
 						ImageProcessor ip = null;
 						if (stackSize>1) {
 							String sliceLabel = inputStack.getSliceLabel(slice);
-							if (sliceLabel!=null && sliceLabel.length()<=15)
-								label2 += ":"+sliceLabel;
+							if (sliceLabel!=null)
+								label2=sliceLabel;
 							else if (label2!=null && !label2.equals(""))
 								label2 += ":"+slice;
 						}
@@ -301,22 +296,8 @@ public class FolderOpener implements PlugIn {
 							}
 						}
 						if (bitDepth2!=bitDepth) {
-							if (dicomImages && bitDepth==16 && bitDepth2==32 && scale==100) {
-								ip = ip.convertToFloat();
-								bitDepth = 32;
-								ImageStack stack2 = new ImageStack(width, height, stack.getColorModel());
-								for (int n=1; n<=stack.size(); n++) {
-									ImageProcessor ip2 = stack.getProcessor(n);
-									ip2 = ip2.convertToFloat();
-									ip2.subtract(32768);
-									String sliceLabel = stack.getSliceLabel(n);
-									stack2.addSlice(sliceLabel, ip2.convertToFloat());
-								}
-								stack = stack2;
-							} else {
-								IJ.log(list[i] + ": wrong bit depth; "+bitDepth+" expected, "+bitDepth2+" found");
-								break;
-							}
+							IJ.log(list[i] + ": wrong bit depth; "+bitDepth+" expected, "+bitDepth2+" found");
+							break;
 						}
 						if (scale<100.0)
 							ip = ip.resize((int)(width*scale/100.0), (int)(height*scale/100.0));
@@ -326,19 +307,18 @@ public class FolderOpener implements PlugIn {
 					}
 				}
 				count++;
-				IJ.showStatus("!"+count+"/"+n);
+				IJ.showStatus(count+"/"+n);
 				IJ.showProgress(count, n);
 				if (count>=n) 
 					break;
 				if (IJ.escapePressed())
 					{IJ.beep(); break;}
-			}  // open images as stack
-			
+			}
 		} catch(OutOfMemoryError e) {
 			IJ.outOfMemory("FolderOpener");
 			if (stack!=null) stack.trim();
 		}
-		if (stack!=null && stack.size()>0) {
+		if (stack!=null && stack.getSize()>0) {
 			ImagePlus imp2 = new ImagePlus(title, stack);
 			if (imp2.getType()==ImagePlus.GRAY16 || imp2.getType()==ImagePlus.GRAY32)
 				imp2.getProcessor().setMinAndMax(min, max);
@@ -364,7 +344,7 @@ public class FolderOpener implements PlugIn {
 					cal.pixelDepth = cal.pixelWidth;
 				imp2.setCalibration(cal);
 			}
-			if (info1!=null && info1.lastIndexOf("7FE0,0010")>0) { //DICOM
+			if (info1!=null && info1.lastIndexOf("7FE0,0010")>0) {
 				if (sortByMetaData)
 					stack = DicomTools.sort(stack);
 				imp2.setStack(stack);
@@ -373,6 +353,10 @@ public class FolderOpener implements PlugIn {
 					if (IJ.debugMode) IJ.log("DICOM voxel depth set to "+voxelDepth+" ("+cal.pixelDepth+")");
 					cal.pixelDepth = voxelDepth;
 					imp2.setCalibration(cal);
+				}
+				if (imp2.getType()==ImagePlus.GRAY16 || imp2.getType()==ImagePlus.GRAY32) {
+					imp2.getProcessor().setMinAndMax(min, max);
+					imp2.updateAndDraw();
 				}
 			}
 			if (imp2.getStackSize()==1) {
@@ -404,12 +388,7 @@ public class FolderOpener implements PlugIn {
 				options = options + " noMetaSort";
    			Recorder.recordCall("imp = FolderOpener.open(\""+directory+"\", \""+options+"\");");
 		}
-
 	}
-	
-	public static boolean useInfo(String info) {
-		return info!=null && !(info.startsWith("Software")||info.startsWith("ImageDescription"));
-	 }
 	
 	private void openAsFileInfoStack(FileInfoVirtualStack stack, String path) {
 		FileInfo[] info = Opener.getTiffFileInfo(path);
@@ -421,20 +400,11 @@ public class FolderOpener implements PlugIn {
 			for (int i=0; i<n; i++) {
 				FileInfo fi = (FileInfo)info[0].clone();
 				fi.nImages = 1;
-				fi.longOffset = fi.getOffset() + i*(size + fi.getGap());
+				fi.longOffset = fi.getOffset() + i*(size + fi.gapBetweenImages);
 				stack.addImage(fi);
 			}
-		} else {
-			FileInfo fi = info[0];
-			if (fi.fileType==FileInfo.RGB48) {
-				for (int slice=1; slice<=3; slice++) {
-					FileInfo fi2 = (FileInfo)fi.clone();
-					fi2.sliceNumber = slice;
-					stack.addImage(fi2);
-				}
-			} else
-				stack.addImage(fi);
-		}
+		} else
+			stack.addImage(info[0]);
 	}
 	
 	boolean showDialog(ImagePlus imp, String[] list) {

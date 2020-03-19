@@ -5,7 +5,7 @@ import java.awt.*;
 /** Statistics, including the histogram, of an image or selection. */
 public class ImageStatistics implements Measurements {
 
-	/** Use the hIstogram() method to get the histogram as a double  array. */
+	/** Use getHIstogram() to get histogram as long array. */
 	public int[] histogram;
 	
 	/** Int pixel count (limited to 2^31-1) */
@@ -67,28 +67,12 @@ public class ImageStatistics implements Measurements {
 	EllipseFitter ef;
 
 	
-	/** Calculates and returns uncalibrated (raw) statistics for the
-	 * specified image, including histogram, area, mean, min and
-	 * max, standard deviation and mode.  Use ImageProcessor.setRoi(x,y,width,height)
-	 * to limit statistics to a rectangular area and ImageProcessor.setRoi(Roi)
-	 * to limit to a non-rectangular area.
-	 * @see ij.process.ImageProcessor#setRoi(int,int,int,int)
-	 * @see ij.process.ImageProcessor#setRoi(Roi)
-	 * @see ij.process.ImageProcessor#getStats
-	*/
+	/* Get uncalibrated statistics, including histogram, area, mean, 
+		min and max, standard deviation and mode. */
 	public static ImageStatistics getStatistics(ImageProcessor ip) {
 		return getStatistics(ip, AREA+MEAN+STD_DEV+MODE+MIN_MAX+RECT, null);
 	}
 
-	/** Calculates and returns statistics for the specified
-	 * image using the specified measurent options
-	 * and calibration. Use ImageProcessor.setRoi(x,y,width,height)
-	 * to limit statistics to a rectangular area and ImageProcessor.setRoi(Roi)
-	 * to limit to a non-rectangular area.
-	 * @see ij.process.ImageProcessor#setRoi(int,int,int,int)
-	 * @see ij.process.ImageProcessor#setRoi(Roi)
-	 * @see ij.measure.Measurements
-	*/
 	public static ImageStatistics getStatistics(ImageProcessor ip, int mOptions, Calibration cal) {
 		Object pixels = ip.getPixels();
 		if (pixels instanceof byte[])
@@ -260,7 +244,7 @@ public class ImageStatistics implements Measurements {
 	
 	void calculateMedian(int[] hist, int first, int last, Calibration cal) {
 		//ij.IJ.log("calculateMedian: "+first+"  "+last+"  "+hist.length+"  "+pixelCount);
-		if (pixelCount==0 || first<0 || last>hist.length) {
+		if (pixelCount==0) {
 			median = Double.NaN;
 			return;
 		}
@@ -292,9 +276,9 @@ public class ImageStatistics implements Measurements {
 		areaFraction = sum*100.0/total;
 	}
 	
-	/** Returns the histogram as an array of doubles. */
-	public double[] histogram() {
-		double[] hist = new double[histogram.length];
+	/** Returns the histogram as an array of longs. */
+	public long[] getHistogram() {
+		long[] hist = new long[histogram.length];
 		for (int i=0; i<hist.length; i++) {
 			if (longHistogram!=null)
 				hist[i] = longHistogram[i];
@@ -302,15 +286,6 @@ public class ImageStatistics implements Measurements {
 				hist[i] = histogram[i];
 		}
 		return hist;
-	}
-
-	/** Returns the histogram as an array of longs. */
-	public long[] getHistogram() {
-		double[] hist = histogram();
-		long[] hist2 = new long[hist.length];
-		for (int i=0; i<hist.length; i++)
-			hist2[i] = (long)hist[i];
-		return hist2;
 	}
 	
 	public String toString() {

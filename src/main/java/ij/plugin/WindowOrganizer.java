@@ -28,7 +28,7 @@ public class WindowOrganizer implements PlugIn {
 	}
 	
 	void tileWindows(int[] wList) {
-		Rectangle screen = GUI.getMaxWindowBounds(IJ.getInstance());
+		Dimension screen = IJ.getScreenSize();
 		int minWidth = Integer.MAX_VALUE;
 		int minHeight = Integer.MAX_VALUE;
 		boolean allSameSize = true;
@@ -106,7 +106,7 @@ public class WindowOrganizer implements PlugIn {
 			}
 			ImageWindow win = getWindow(wList[i]);
 			if (win!=null) {
-				win.setLocation(hloc + screen.x, vloc + screen.y);
+				win.setLocation(hloc, vloc);
 				ImageCanvas canvas = win.getCanvas();
 				while (win.getSize().width*0.85>=tileWidth && canvas.getMagnification()>0.03125)
 					canvas.zoomOut(0, 0);
@@ -127,7 +127,7 @@ public class WindowOrganizer implements PlugIn {
 	}		
 			
 	void cascadeWindows(int[] wList) {
-		Rectangle screen = GUI.getMaxWindowBounds(IJ.getInstance());
+		Dimension screen = IJ.getScreenSize();
 		int x = XSTART;
 		int y = YSTART;
 		int xstep = 0;
@@ -149,7 +149,7 @@ public class WindowOrganizer implements PlugIn {
 				x = xstart;
 				y = YSTART;
 			}
-			win.setLocation(x + screen.x, y + screen.y);
+			win.setLocation(x, y);
 			win.toFront();
 				x += XOFFSET;
 			y += YOFFSET;
@@ -173,12 +173,14 @@ public class WindowOrganizer implements PlugIn {
 				
 			}
 		}
-		Window[] windows = WindowManager.getAllNonImageWindows();
-		if (windows!=null) {
-			for (int i=0; i<windows.length; i++)
-					WindowManager.toFront(windows[i]);
+		Frame[] frames = WindowManager.getNonImageWindows();
+		if (frames!=null) {
+			for (int i=0; i<frames.length; i++)
+					WindowManager.toFront(frames[i]);
 		}
 		IJ.getInstance().toFront();
 	}
 
 }
+
+

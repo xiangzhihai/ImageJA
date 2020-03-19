@@ -21,6 +21,7 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 	public static final String LOC_KEY = "threshold.loc";
 	public static final String MODE_KEY = "threshold.mode";
 	public static final String DARK_BACKGROUND = "threshold.dark";
+	public static final String NO_RESET = "threshold.no-reset";
 	static final int RED=0, BLACK_AND_WHITE=1, OVER_UNDER=2;
 	static final String[] modes = {"Red","B&W", "Over/Under"};
 	static final double defaultMinThreshold = 0;//85;
@@ -59,10 +60,11 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 	boolean done;
 	int lutColor;
 	Choice methodChoice, modeChoice;
-	Checkbox darkBackground, stackHistogram;
+	Checkbox darkBackground, stackHistogram, noResetButton;
 	boolean firstActivation = true;
 	boolean setButtonPressed;
-
+	boolean noReset;
+	boolean noResetChanged;
 
 	public ThresholdAdjuster() {
 		super("Threshold");
@@ -119,7 +121,6 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 
 		// minThreshold slider
 		minSlider = new Scrollbar(Scrollbar.HORIZONTAL, sliderRange/3, 1, 0, sliderRange);
-		GUI.fixScrollbar(minSlider);
 		c.gridx = 0;
 		c.gridy = y++;
 		c.gridwidth = 1;
@@ -149,7 +150,6 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 
 		// maxThreshold slider
 		maxSlider = new Scrollbar(Scrollbar.HORIZONTAL, sliderRange*2/3, 1, 0, sliderRange);
-		GUI.fixScrollbar(maxSlider);
 		c.gridx = 0;
 		c.gridy = y++;
 		c.gridwidth = 1;
@@ -200,24 +200,32 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 
 		// checkboxes
 		panel = new Panel();
+		panel.setLayout(new GridLayout(2, 2));
 		boolean db = Prefs.get(DARK_BACKGROUND, Prefs.blackBackground?true:false);
-        darkBackground = new Checkbox("Dark background");
-        darkBackground.setState(db);
-        darkBackground.addItemListener(this);
-        panel.add(darkBackground);
-        stackHistogram = new Checkbox("Stack histogram");
-        stackHistogram.setState(false);
-        stackHistogram.addItemListener(this);
-        panel.add(stackHistogram);
-        c.gridx = 0;
-        c.gridy = y++;
-        c.gridwidth = 2;
-		c.insets = new Insets(5, 5, 0, 5);
-        add(panel, c);
+		darkBackground = new Checkbox("Dark background");
+		darkBackground.setState(db);
+		darkBackground.addItemListener(this);
+		panel.add(darkBackground);
+		stackHistogram = new Checkbox("Stack histogram");
+		stackHistogram.setState(false);
+		stackHistogram.addItemListener(this);
+		panel.add(stackHistogram); 
+		noReset = Prefs.get(NO_RESET, false);
+		noResetButton = new Checkbox("Don't reset range");
+		noResetButton.setState(noReset);
+		noResetButton.addItemListener(this);
+		panel.add(noResetButton);
+		c.gridx = 0;
+		c.gridy = y++;
+		c.gridwidth = 2;
+		c.insets = new Insets(5, 5, 0, 0);
+		add(panel, c);
 
 		// buttons
 		int trim = IJ.isMacOSX()?11:0;
 		panel = new Panel();
+		int hgap = IJ.isMacOSX()?1:5;
+		panel.setLayout(new FlowLayout(FlowLayout.RIGHT,hgap,0));
 		autoB = new TrimmedButton("Auto",trim);
 		autoB.addActionListener(this);
 		autoB.addKeyListener(ij);
@@ -241,13 +249,12 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 		add(panel, c);
 
  		addKeyListener(ij);  // ImageJ handles keyboard shortcuts
-		GUI.scale(this);
 		pack();
 		Point loc = Prefs.getLocation(LOC_KEY);
 		if (loc!=null)
 			setLocation(loc);
 		else
-			GUI.centerOnImageJScreen(this);
+			GUI.center(this);
 		if (IJ.isMacOSX()) setResizable(false);
 		show();
 
@@ -365,6 +372,10 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 			}
 		} else if (source==darkBackground) {
 			doBackground = true;
+		} else if (source==noResetButton) {
+			noReset = noResetButton.getState();
+			noResetChanged = true;
+			doReset = true;
 		} else
 			doAutoAdjust = true;
 		notify();
@@ -404,12 +415,12 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 			maxThreshold = ip.getMaxThreshold();
 			boolean isThreshold = minThreshold != ImageProcessor.NO_THRESHOLD
 					&& ip.getCurrentColorModel() != ip.getColorModel(); //does not work???
-			/*if (not8Bits && minMaxChange) {  //if display Range is not the full range, correct threshold at display range limit
+			if (not8Bits && minMaxChange && (!noReset || mode==OVER_UNDER)) {
 				double max1 = ip.getMax();
 				resetMinAndMax(ip);
 				if (maxThreshold==max1)
 					maxThreshold = ip.getMax();
-			}*/
+			}
 			ImageStatistics stats = plot.setHistogram(imp, entireStack(imp));
 			if (stats == null)
 				return null;
@@ -439,8 +450,14 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 	}
 
 	private void resetMinAndMax(ImageProcessor ip) {
-		if ((ip instanceof ByteProcessor) || (mode==OVER_UNDER))
-			ip.resetMinAndMax();
+		if (ip.getBitDepth()!=8 && (!noReset || mode==OVER_UNDER)) {
+			ImageStatistics stats = ip.getStats();
+			if (ip.getMin()!=stats.min || ip.getMax()!=stats.max) {
+				ip.resetMinAndMax();
+				ContrastAdjuster.update();
+			} else
+				ip.resetMinAndMax();
+		}
 	}
 
 	boolean entireStack(ImagePlus imp) {
@@ -458,7 +475,6 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 			stats.histogram[stats.mode] = plot.originalModeCount;
 		int threshold = thresholder.getThreshold(method, stats.histogram);
 		stats.histogram[stats.mode] = modifiedModeCount;
-
 		if (thresholdHigh(ip))  // dark background for non-inverting LUT, or bright background for inverting LUT
 			{minThreshold=threshold+1; maxThreshold=255;}
 		else
@@ -467,8 +483,7 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 			minThreshold = 255;
 		if (Recorder.record) {
 			boolean stack = stackHistogram!=null && stackHistogram.getState();
-			boolean noReset = !((ip instanceof ByteProcessor) || (mode==OVER_UNDER));
-			if (noReset) {
+			if (noReset && ip.getBitDepth()!=8) {
 				ImageStatistics stats2 = ip.getStats();
 				if (ip.getMin()>stats2.min || ip.getMax()<stats2.max)
 					ContrastAdjuster.recordSetMinAndMax(ip.getMin(),ip.getMax());
@@ -531,7 +546,8 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
  		int max = (int)Math.round(maxThreshold);
  		if (max<0) max=0;
  		if (max>255) max=255;
- 		plot.setThreshold(min,max);
+		plot.lowerThreshold = min;
+		plot.upperThreshold = max;
 		plot.mode = mode;
 		plot.repaint();
 	}
@@ -657,14 +673,22 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 	}
 
 	void reset(ImagePlus imp, ImageProcessor ip) {
-		ip.resetThreshold();
-		ImageStatistics stats = plot.setHistogram(imp, entireStack(imp));
-		if (!(ip instanceof ByteProcessor)) {
-			if (entireStack(imp))
-				ip.setMinAndMax(stats.min, stats.max);
-			else
-				resetMinAndMax(ip);;
+		if (noResetChanged) {
+			noResetChanged = false;
+			if ((noReset&&mode!=OVER_UNDER) || ip.getBitDepth()==8)
+				return;
+			if (!noReset) {
+				ImageStatistics stats = ip.getStats();
+				if (ip.getMin()==stats.min && ip.getMax()==stats.max)
+					return; // not contrast enhanced; no need to reset
+			}
 		}
+		ip.resetThreshold();
+		if (!noReset)
+			resetMinAndMax(ip);
+		ImageStatistics stats = plot.setHistogram(imp, entireStack(imp));
+		if (ip.getBitDepth()!=8 && entireStack(imp))
+			ip.setMinAndMax(stats.min, stats.max);
 		updateScrollBars();
 		if (Recorder.record) {
 			if (Recorder.scriptMode())
@@ -784,6 +808,7 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 		}
 		minSlider.setValue((int)minThreshold);
 		maxSlider.setValue((int)maxThreshold);
+
 		scaleUpAndSet(ip, minThreshold, maxThreshold);
 	}
 
@@ -893,6 +918,7 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 		Prefs.saveLocation(LOC_KEY, getLocation());
 		Prefs.set(MODE_KEY, mode);
 		Prefs.set(DARK_BACKGROUND, darkBackground.getState());
+		Prefs.set(NO_RESET, noResetButton.getState());
 		synchronized(this) {
 			notify();
 		}
@@ -977,12 +1003,9 @@ public class ThresholdAdjuster extends PlugInDialog implements PlugIn, Measureme
 
 
 class ThresholdPlot extends Canvas implements Measurements, MouseListener {
-	double scale = Prefs.getGuiScale();
-	int width = (int)Math.round(256*scale);
-	int height= (int)Math.round(48*scale);
+	static final int WIDTH = 256, HEIGHT=48;
 	int lowerThreshold = -1;
- 	int upperThreshold = (int)Math.round(170*scale);
-
+	int upperThreshold = 170;
 	ImageStatistics stats;
 	int[] histogram;
 	Color[] hColors;
@@ -998,13 +1021,13 @@ class ThresholdPlot extends Canvas implements Measurements, MouseListener {
 
 	public ThresholdPlot() {
 		addMouseListener(this);
-		setSize(width+2, height+2);
+		setSize(WIDTH+2, HEIGHT+2);
 	}
 
     /** Overrides Component getPreferredSize(). Added to work
     	around a bug in Java 1.4.1 on Mac OS X.*/
     public Dimension getPreferredSize() {
-        return new Dimension(width+2, height+2);
+        return new Dimension(WIDTH+2, HEIGHT+2);
     }
 
 	ImageStatistics setHistogram(ImagePlus imp, boolean entireStack) {
@@ -1103,22 +1126,15 @@ class ThresholdPlot extends Canvas implements Measurements, MouseListener {
 		if (g==null) return;
 		if (histogram!=null) {
 			if (os==null && hmax>0) {
-				os = createImage(width,height);
+				os = createImage(WIDTH,HEIGHT);
 				osg = os.getGraphics();
-				if (scale>1)
-					((Graphics2D)osg).setStroke(new BasicStroke((float)scale));
 				osg.setColor(Color.white);
-				osg.fillRect(0, 0, width, height);
+				osg.fillRect(0, 0, WIDTH, HEIGHT);
 				osg.setColor(Color.gray);
-				double scale2 = width/256.0;
-				int barWidth = 1;
-				if (scale>1) barWidth=2;
-				if (scale>2) barWidth=3;
-				for (int i = 0; i < 256; i++) {
+				for (int i = 0; i < WIDTH; i++) {
 					if (hColors!=null) osg.setColor(hColors[i]);
-					int x =(int)(i*scale2);
-					for (int j = 0; j<barWidth; j++)
-						osg.drawLine(x+j, height, x+j, height - ((int)(height*histogram[i]+hmax-1)/hmax));
+					int histValue = histogram[i]<hmax ? histogram[i] : hmax;
+					osg.drawLine(i, HEIGHT, i, HEIGHT - (HEIGHT*histogram[i]+hmax-1)/hmax);
 				}
 				osg.dispose();
 			}
@@ -1126,30 +1142,25 @@ class ThresholdPlot extends Canvas implements Measurements, MouseListener {
 			g.drawImage(os, 1, 1, this);
 		} else {
 			g.setColor(Color.white);
-			g.fillRect(1, 1, width, height);
+			g.fillRect(1, 1, WIDTH, HEIGHT);
 		}
 		g.setColor(Color.black);
- 		g.drawRect(0, 0, width+1, height+1);
+ 		g.drawRect(0, 0, WIDTH+1, HEIGHT+1);
  		if (lowerThreshold==-1)
  			return;
 		if (mode==ThresholdAdjuster.OVER_UNDER) {
 			g.setColor(Color.blue);
-			g.drawRect(0, 0, lowerThreshold, height+1);
+			g.drawRect(0, 0, lowerThreshold, HEIGHT+1);
 			g.drawRect(0, 1, lowerThreshold, 1);
 			g.setColor(Color.green);
-			g.drawRect(upperThreshold+2, 0, width-upperThreshold-1, height+1);
-			g.drawLine(upperThreshold+2, 1, width+1,1);
+			g.drawRect(upperThreshold+2, 0, WIDTH-upperThreshold-1, HEIGHT+1);
+			g.drawLine(upperThreshold+2, 1, WIDTH+1,1);
 			return;
 		}
 		if (mode==ThresholdAdjuster.RED)
 			g.setColor(Color.red);
-		g.drawRect(lowerThreshold+1, 0, upperThreshold-lowerThreshold, height+1);
+		g.drawRect(lowerThreshold+1, 0, upperThreshold-lowerThreshold, HEIGHT+1);
 		g.drawLine(lowerThreshold+1, 1, upperThreshold+1, 1);
-	}
-	
-	void setThreshold(int min, int max) {
- 		lowerThreshold = (int)Math.round(min*scale);
- 		upperThreshold = (int)Math.round(max*scale);
 	}
 
 	public void mousePressed(MouseEvent e) {}

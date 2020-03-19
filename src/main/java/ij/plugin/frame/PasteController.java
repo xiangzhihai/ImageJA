@@ -45,9 +45,8 @@ public class PasteController extends PlugInFrame implements PlugIn, ItemListener
 		add(pasteMode);
 		Roi.setPasteMode(Blitter.COPY);
 
-		GUI.scale(this);
 		pack();
-		GUI.centerOnImageJScreen(this);
+		GUI.center(this);
 		setResizable(false);
 		show();
 	}

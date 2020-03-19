@@ -8,15 +8,9 @@ import java.net.*;
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
 
-/** This class decodes an ImageJ .roi file. 
-	<p>
-	Format of the original 64 byte ImageJ/NIH Image
-	.roi file header. Two byte numbers are big-endian
-	signed shorts. The JavaScript example at
-	http://wsr.imagej.net/macros/js/DecodeRoiFile.js
-	demonstrates how to use this information to 
-	decode a .roi file.
-	<pre>
+/*	ImageJ/NIH Image 64 byte ROI outline header
+	2 byte numbers are big-endian signed shorts
+	
 	0-3		"Iout"
 	4-5		version (>=217)
 	6-7		roi type (encoded as one byte)
@@ -25,7 +19,7 @@ import java.awt.geom.Rectangle2D;
 	12-13	bottom
 	14-15	right
 	16-17	NCoordinates
-	18-33	x1,y1,x2,y2 (straight line) | x,y,width,height (double rect) | size (npoints)
+	18-33	x1,y1,x2,y2 (straight line)
 	34-35	stroke width (v1.43i or later)
 	36-39   ShapeRoi size (type must be 1 if this value>0)
 	40-43   stroke color (v1.43i or later)
@@ -38,10 +32,9 @@ import java.awt.geom.Rectangle2D;
 	56-59   position
 	60-63   header2 offset
 	64-       x-coordinates (short), followed by y-coordinates
-	<pre>
-	@see <a href="http://wsr.imagej.net/macros/js/DecodeRoiFile.js">DecodeRoiFile.js</a>
 */
 
+/** Decodes an ImageJ, NIH Image or Scion Image ROI file. */
 public class RoiDecoder {
 	// offsets
 	public static final int VERSION_OFFSET = 4;
@@ -59,7 +52,6 @@ public class RoiDecoder {
 	public static final int YD = 22;
 	public static final int WIDTHD = 26;
 	public static final int HEIGHTD = 30;
-	public static final int SIZE = 18;
 	public static final int STROKE_WIDTH = 34;
 	public static final int SHAPE_ROI_SIZE = 36;
 	public static final int STROKE_COLOR = 40;
@@ -82,7 +74,7 @@ public class RoiDecoder {
 	public static final int NAME_LENGTH = 20;
 	public static final int OVERLAY_LABEL_COLOR = 24;
 	public static final int OVERLAY_FONT_SIZE = 28; //short
-	public static final int GROUP = 30;  //byte
+	public static final int AVAILABLE_BYTE1 = 30;  //byte
 	public static final int IMAGE_OPACITY = 31;  //byte
 	public static final int IMAGE_SIZE = 32;  //int
 	public static final int FLOAT_STROKE_WIDTH = 36;  //float
@@ -109,9 +101,6 @@ public class RoiDecoder {
 	public static final int DRAW_OFFSET = 256;
 	public static final int ZERO_TRANSPARENT = 512;
 	public static final int SHOW_LABELS = 1024;
-	public static final int SCALE_LABELS = 2048;
-	public static final int PROMPT_BEFORE_DELETING = 4096; //points
-	public static final int SCALE_STROKE_WIDTH = 8192;
 	
 	// types
 	private final int polygon=0, rect=1, oval=2, line=3, freeline=4, polyline=5, noRoi=6,
@@ -173,22 +162,16 @@ public class RoiDecoder {
 		int width = right-left;
 		int height = bottom-top;
 		int n = getUnsignedShort(N_COORDINATES);
-		if (n==0)
-			n = getInt(SIZE);
 		int options = getShort(OPTIONS);
 		int position = getInt(POSITION);
 		int hdr2Offset = getInt(HEADER2_OFFSET);
 		int channel=0, slice=0, frame=0;
 		int overlayLabelColor=0;
 		int overlayFontSize=0;
-		int group=0;
 		int imageOpacity=0;
 		int imageSize=0;
 		boolean subPixelResolution = (options&SUB_PIXEL_RESOLUTION)!=0 &&  version>=222;
 		boolean drawOffset = subPixelResolution && (options&DRAW_OFFSET)!=0;
-		boolean scaleStrokeWidth = true;
-		if (version>=228)
-			scaleStrokeWidth = (options&SCALE_STROKE_WIDTH)!=0;
 		
 		boolean subPixelRect = version>=223 && subPixelResolution && (type==rect||type==oval);
 		double xd=0.0, yd=0.0, widthd=0.0, heightd=0.0;
@@ -207,7 +190,6 @@ public class RoiDecoder {
 			overlayFontSize = getShort(hdr2Offset+OVERLAY_FONT_SIZE);
 			imageOpacity = getByte(hdr2Offset+IMAGE_OPACITY);
 			imageSize = getInt(hdr2Offset+IMAGE_SIZE);
-			group = getByte(hdr2Offset+GROUP);
 		}
 		
 		if (name!=null && name.endsWith(".roi"))
@@ -218,7 +200,7 @@ public class RoiDecoder {
 		if (isComposite) {
 			roi = getShapeRoi();
 			if (version>=218)
-				getStrokeWidthAndColor(roi, hdr2Offset, scaleStrokeWidth);
+				getStrokeWidthAndColor(roi, hdr2Offset);
 			roi.setPosition(position);
 			if (channel>0 || slice>0 || frame>0)
 				roi.setPosition(channel, slice, frame);
@@ -308,8 +290,6 @@ public class RoiDecoder {
 						}
 						if ((options&SHOW_LABELS)!=0 && !ij.Prefs.noPointLabels)
 							((PointRoi)roi).setShowLabels(true);
-						if ((options&PROMPT_BEFORE_DELETING)!=0)
-							((PointRoi)roi).promptBeforeDeleting(true);
 						break;
 					}
 					int roiType;
@@ -354,7 +334,7 @@ public class RoiDecoder {
 		
 		// read stroke width, stroke color and fill color (1.43i or later)
 		if (version>=218) {
-			getStrokeWidthAndColor(roi, hdr2Offset, scaleStrokeWidth);
+			getStrokeWidthAndColor(roi, hdr2Offset);
 			if (type==point)
 				roi.setStrokeWidth(0);
 			boolean splineFit = (options&SPLINE_FIT)!=0;
@@ -379,10 +359,6 @@ public class RoiDecoder {
 			if (counters!=null && (roi instanceof PointRoi))
 				((PointRoi)roi).setCounters(counters);
 		}
-		
-		// set group (1.52t or later)
-		if (version>=228 && group>0)
-			roi.setGroup(group);
 
 		roi.setPosition(position);
 		if (channel>0 || slice>0 || frame>0)
@@ -396,29 +372,24 @@ public class RoiDecoder {
 		proto.drawLabels((options&OVERLAY_LABELS)!=0);
 		proto.drawNames((options&OVERLAY_NAMES)!=0);
 		proto.drawBackgrounds((options&OVERLAY_BACKGROUNDS)!=0);
-		if (version>=220 && color!=0)
+		if (version>=220)
 			proto.setLabelColor(new Color(color));
 		boolean bold = (options&OVERLAY_BOLD)!=0;
-		boolean scalable = (options&SCALE_LABELS)!=0;
-		if (fontSize>0 || bold || scalable) {
-			proto.setLabelFont(new Font("SansSerif", bold?Font.BOLD:Font.PLAIN, fontSize), scalable);
+		if (fontSize>0 || bold) {
+			proto.setLabelFont(new Font("SansSerif", bold?Font.BOLD:Font.PLAIN, fontSize));
 		}
 		roi.setPrototypeOverlay(proto);
 	}
 
-	void getStrokeWidthAndColor(Roi roi, int hdr2Offset, boolean scaleStrokeWidth) {
+	void getStrokeWidthAndColor(Roi roi, int hdr2Offset) {
 		double strokeWidth = getShort(STROKE_WIDTH);
 		if (hdr2Offset>0) {
 			double strokeWidthD = getFloat(hdr2Offset+FLOAT_STROKE_WIDTH);
 			if (strokeWidthD>0.0)
 				strokeWidth = strokeWidthD;
 		}
-		if (strokeWidth>0.0) {
-			if (scaleStrokeWidth)
-				roi.setStrokeWidth(strokeWidth);
-			else
-				roi.setUnscalableStrokeWidth(strokeWidth);
-		}
+		if (strokeWidth>0.0)
+			roi.setStrokeWidth(strokeWidth);
 		int strokeColor = getInt(STROKE_COLOR);
 		if (strokeColor!=0) {
 			int alpha = (strokeColor>>24)&0xff;

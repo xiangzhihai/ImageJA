@@ -27,7 +27,6 @@ public class FFT implements	 PlugIn, Measurements {
 	public static boolean displayFHT;
 	public static boolean displayComplex;
 	public static String fileName;
-	private static boolean reuseWindow;
 	
 	private ImagePlus imp, imp2;
 	private boolean padded;
@@ -243,16 +242,9 @@ public class FFT implements	 PlugIn, Measurements {
 		if (!(displayFHT||displayComplex||displayRawPS))
 			displayFFT = true;
 		if (displayFFT) {
-			String title = "FFT of "+imp.getTitle();
-			ImagePlus imp2 = new ImagePlus(title, ps);
-			if (showOutput) {
-				ImagePlus fftImage = reuseWindow?WindowManager.getImage(title):null;
-				if (fftImage!=null)
-					fftImage.setImage(imp2);
-				else
-					imp2.show((System.currentTimeMillis()-t0)+" ms");
-			}
-			fht.powerSpectrumMean = ps.getStats().mean;
+			ImagePlus imp2 = new ImagePlus("FFT of "+imp.getTitle(), ps);
+			if (showOutput)
+				imp2.show((System.currentTimeMillis()-t0)+" ms");
 			imp2.setProperty("FHT", fht);
 			imp2.setCalibration(imp.getCalibration());
 			String properties = "Fast Hartley Transform\n";
@@ -325,17 +317,12 @@ public class FFT implements	 PlugIn, Measurements {
 			return;
 		float[] fht = (float[])ip.getPixels();
 		ImageProcessor mask = imp.getProcessor();
-		int bitDepth = mask.getBitDepth();
 		mask = mask.convertToByte(false);
 		if (mask.getWidth()!=ip.getWidth() || mask.getHeight()!=ip.getHeight())
 			return;
-		mask.resetRoi();
-		ImageStatistics stats = mask.getStats();
-		if (stats.histogram[0]==0 && stats.histogram[255]==0) {
-			if (bitDepth==8 && ip.powerSpectrumMean!=stats.mean)
-				IJ.showMessage("Inverse FFT", "No pixels have been set to 0 (black) or\n255 (white) so filtering will not be done.");
+		ImageStatistics stats = ImageStatistics.getStatistics(mask, MIN_MAX, null);
+		if (stats.histogram[0]==0 && stats.histogram[255]==0)
 			return;
-		}
 		boolean passMode = stats.histogram[255]!=0;
 		IJ.showStatus("Masking: "+(passMode?"pass":"filter"));
 		mask = mask.duplicate();
@@ -419,7 +406,7 @@ public class FFT implements	 PlugIn, Measurements {
 	
 	void swapQuadrants(ImageStack stack) {
 		FHT fht = new FHT(new FloatProcessor(1, 1));
-		for (int i=1; i<=stack.size(); i++)
+		for (int i=1; i<=stack.getSize(); i++)
 			fht.swapQuadrants(stack.getProcessor(i));
 	}
 
@@ -437,7 +424,6 @@ public class FFT implements	 PlugIn, Measurements {
 		gd.addCheckbox("Complex Fourier Transform", displayComplex);
 		gd.setInsets(8, 20, 0);
 		gd.addCheckbox("Do forward transform", false);
-		gd.addCheckbox("Reuse \"FFT of...\" window", reuseWindow);
 		gd.addHelp(IJ.URL+"/docs/menus/process.html#fft-options");
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -447,7 +433,6 @@ public class FFT implements	 PlugIn, Measurements {
 		displayFHT = gd.getNextBoolean();
 		displayComplex = gd.getNextBoolean();
 		doFFT = gd.getNextBoolean();
-		reuseWindow = gd.getNextBoolean();
 	}
 	
 	void doFHTInverseTransform() {

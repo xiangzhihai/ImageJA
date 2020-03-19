@@ -1,12 +1,14 @@
 package ij;
-import java.awt.*;
-import java.awt.image.*;
+
 import ij.process.*;
 
+import java.awt.*;
+import java.awt.image.ColorModel;
+
 /**
-This class represents an expandable array of images.
-@see ImagePlus
-*/
+ This class represents an expandable array of images.
+ @see ImagePlus
+ */
 public class ImageStack {
 	private static final int BYTE=0, SHORT=1, FLOAT=2, RGB=3, UNKNOWN=-1;
 	static final int INITIAL_SIZE = 25;
@@ -22,7 +24,7 @@ public class ImageStack {
 	private double max;
 	private float[] cTable;
 	private int viewers;
-	
+
 	/** Default constructor. */
 	public ImageStack() { }
 
@@ -30,9 +32,9 @@ public class ImageStack {
 	public ImageStack(int width, int height) {
 		this(width, height, null);
 	}
-	
+
 	/** Creates a new, empty image stack with a capacity of 'size'.  All
-	     'size' slices and labels of this image stack are initially null.*/
+	 'size' slices and labels of this image stack are initially null.*/
 	public ImageStack(int width, int height, int size) {
 		this.width = width;
 		this.height = height;
@@ -53,9 +55,9 @@ public class ImageStack {
 
 	/** Adds an image in the form of a pixel array to the end of the stack. */
 	public void addSlice(String sliceLabel, Object pixels) {
-		if (pixels==null) 
+		if (pixels==null)
 			throw new IllegalArgumentException("'pixels' is null!");
-		if (!pixels.getClass().isArray()) 
+		if (!pixels.getClass().isArray())
 			throw new IllegalArgumentException("'pixels' is not an array");
 		int size = stack.length;
 		nSlices++;
@@ -72,7 +74,7 @@ public class ImageStack {
 		if (type==UNKNOWN)
 			setType(pixels);
 	}
-	
+
 	private void setType(Object pixels) {
 		if (pixels==null)
 			return;
@@ -85,32 +87,25 @@ public class ImageStack {
 		else if (pixels instanceof int[])
 			type = RGB;
 	}
-	
+
 	/**
-	* @deprecated
-	* Short images are always unsigned.
-	*/
+	 * @deprecated
+	 * Short images are always unsigned.
+	 */
 	public void addUnsignedShortSlice(String sliceLabel, Object pixels) {
 		addSlice(sliceLabel, pixels);
 	}
-	
+
 	/** Adds the image in 'ip' to the end of the stack. */
 	public void addSlice(ImageProcessor ip) {
 		addSlice(null, ip);
 	}
 
 	/** Adds the image in 'ip' to the end of the stack, setting
-		the string 'sliceLabel' as the slice metadata. */
+	 the string 'sliceLabel' as the slice metadata. */
 	public void addSlice(String sliceLabel, ImageProcessor ip) {
-		if (ip.getWidth()!=width || ip.getHeight()!=height) {
-			if (width==0 && height==0) {
-				width = ip.getWidth();
-				height = ip.getHeight();
-				stack = new Object[INITIAL_SIZE];
-				label = new String[INITIAL_SIZE];
-			} else
-				throw new IllegalArgumentException("ImageStack.addSlice(): dimensions do not match");
-		}
+		if (ip.getWidth()!=width || ip.getHeight()!=height)
+			throw new IllegalArgumentException("ImageStack.addSlice(): dimensions do not match");
 		if (nSlices==0) {
 			cm = ip.getColorModel();
 			min = ip.getMin();
@@ -118,9 +113,9 @@ public class ImageStack {
 		}
 		addSlice(sliceLabel, ip.getPixels());
 	}
-	
+
 	/** Adds the image in 'ip' to the stack following slice 'n'. Adds
-		the slice to the beginning of the stack if 'n' is zero. */
+	 the slice to the beginning of the stack if 'n' is zero. */
 	public void addSlice(String sliceLabel, ImageProcessor ip, int n) {
 		if (n<0 || n>nSlices)
 			throw new IllegalArgumentException(outOfRange+n);
@@ -135,7 +130,7 @@ public class ImageStack {
 		stack[n] = tempSlice;
 		label[n] = tempLabel;
 	}
-	
+
 	/** Deletes the specified slice, were 1<=n<=nslices. */
 	public void deleteSlice(int n) {
 		if (n<1 || n>nSlices)
@@ -150,34 +145,34 @@ public class ImageStack {
 		label[nSlices-1] = null;
 		nSlices--;
 	}
-	
+
 	/** Deletes the last slice in the stack. */
 	public void deleteLastSlice() {
 		if (nSlices>0)
 			deleteSlice(nSlices);
 	}
-	
-    public int getWidth() {
-    	return width;
-    }
 
-    public int getHeight() {
-    	return height;
-    }
-    
+	public int getWidth() {
+		return width;
+	}
+
+	public int getHeight() {
+		return height;
+	}
+
 	public void setRoi(Rectangle roi) {
 		this.roi = roi;
 	}
-	
+
 	public Rectangle getRoi() {
 		if (roi==null)
 			return new Rectangle(0, 0, width, height);
 		else
 			return(roi);
 	}
-	
+
 	/** Updates this stack so its attributes, such as min, max,
-		calibration table and color model, are the same as 'ip'. */
+	 calibration table and color model, are the same as 'ip'. */
 	public void update(ImageProcessor ip) {
 		if (ip!=null) {
 			min = ip.getMin();
@@ -186,16 +181,16 @@ public class ImageStack {
 			cm = ip.getColorModel();
 		}
 	}
-	
+
 	/** Returns the pixel array for the specified slice, were 1<=n<=nslices. */
 	public Object getPixels(int n) {
 		if (n<1 || n>nSlices)
 			throw new IllegalArgumentException(outOfRange+n);
 		return stack[n-1];
 	}
-	
+
 	/** Assigns a pixel array to the specified slice,
-		were 1<=n<=nslices. */
+	 were 1<=n<=nslices. */
 	public void setPixels(Object pixels, int n) {
 		if (n<1 || n>nSlices)
 			throw new IllegalArgumentException(outOfRange+n);
@@ -203,55 +198,56 @@ public class ImageStack {
 		if (type==UNKNOWN)
 			setType(pixels);
 	}
-	
+
 	/** Returns the stack as an array of 1D pixel arrays. Note
-		that the size of the returned array may be greater than
-		the number of slices currently in the stack, with
-		unused elements set to null. */
+	 that the size of the returned array may be greater than
+	 the number of slices currently in the stack, with
+	 unused elements set to null. */
 	public Object[] getImageArray() {
 		return stack;
 	}
-	
+
+	/** Returns the number of slices in this stack. */
+	public int getSize() {
+		return nSlices;
+	}
+
 	/** Returns the number of slices in this stack. */
 	public int size() {
 		return getSize();
 	}
 
-	public int getSize() {
-		return nSlices;
-	}
-
 	/** Returns the slice labels as an array of Strings. Note
-		that the size of the returned array may be greater than
-		the number of slices currently in the stack. Returns null
-		if the stack is empty or the label of the first slice is null.  */
+	 that the size of the returned array may be greater than
+	 the number of slices currently in the stack. Returns null
+	 if the stack is empty or the label of the first slice is null.  */
 	public String[] getSliceLabels() {
 		if (nSlices==0)
 			return null;
 		else
 			return label;
 	}
-	
+
 	/** Returns the label of the specified slice, were 1<=n<=nslices.
-		Returns null if the slice does not have a label. For DICOM
-		and FITS stacks, labels may contain header information. */
+	 Returns null if the slice does not have a label. For DICOM
+	 and FITS stacks, labels may contain header information. */
 	public String getSliceLabel(int n) {
 		if (n<1 || n>nSlices)
 			throw new IllegalArgumentException(outOfRange+n);
 		return label[n-1];
 	}
-	
-	/** Returns a shortened version (up to the first 60 characters or first newline and 
-		suffix removed) of the label of the specified slice.
-		Returns null if the slice does not have a label. */
+
+	/** Returns a shortened version (up to the first 60 characters or first newline and
+	 suffix removed) of the label of the specified slice.
+	 Returns null if the slice does not have a label. */
 	public String getShortSliceLabel(int n) {
 		String shortLabel = getSliceLabel(n);
 		if (shortLabel==null) return null;
-    	int newline = shortLabel.indexOf('\n');
-    	if (newline==0) return null;
-    	if (newline>0)
-    		shortLabel = shortLabel.substring(0, newline);
-    	int len = shortLabel.length();
+		int newline = shortLabel.indexOf('\n');
+		if (newline==0) return null;
+		if (newline>0)
+			shortLabel = shortLabel.substring(0, newline);
+		int len = shortLabel.length();
 		if (len>4 && shortLabel.charAt(len-4)=='.' && !Character.isDigit(shortLabel.charAt(len-1)))
 			shortLabel = shortLabel.substring(0,len-4);
 		if (shortLabel.length()>60)
@@ -265,10 +261,10 @@ public class ImageStack {
 			throw new IllegalArgumentException(outOfRange+n);
 		this.label[n-1] = label;
 	}
-	
+
 	/** Returns an ImageProcessor for the specified slice,
-		were 1<=n<=nslices. Returns null if the stack is empty.
-	*/
+	 were 1<=n<=nslices. Returns null if the stack is empty.
+	 */
 	public ImageProcessor getProcessor(int n) {
 		ImageProcessor ip;
 		if (n<1 || n>nSlices)
@@ -284,7 +280,7 @@ public class ImageStack {
 		else if (stack[n-1] instanceof int[])
 			ip = new ColorProcessor(width, height, null);
 		else if (stack[n-1] instanceof float[])
-			ip = new FloatProcessor(width, height, null, cm);		
+			ip = new FloatProcessor(width, height, null, cm);
 		else
 			throw new IllegalArgumentException("Unknown stack type");
 		ip.setPixels(stack[n-1]);
@@ -294,9 +290,9 @@ public class ImageStack {
 			ip.setCalibrationTable(cTable);
 		return ip;
 	}
-	
+
 	/** Assigns the pixel array of an ImageProcessor to the
-		 specified slice, were 1<=n<=nslices. */
+	 specified slice, were 1<=n<=nslices. */
 	public void setProcessor(ImageProcessor ip, int n) {
 		if (n<1 || n>nSlices)
 			throw new IllegalArgumentException(outOfRange+n);
@@ -311,29 +307,29 @@ public class ImageStack {
 	public void setColorModel(ColorModel cm) {
 		this.cm = cm;
 	}
-	
+
 	/** Returns this stack's color model. May return null. */
 	public ColorModel getColorModel() {
 		return cm;
 	}
-	
+
 	/** Returns true if this is a 3-slice, 8-bit RGB stack. */
 	public boolean isRGB() {
-    	return nSlices==3 && (stack[0] instanceof byte[]) && getSliceLabel(1)!=null && getSliceLabel(1).equals("Red");
+		return nSlices==3 && (stack[0] instanceof byte[]) && getSliceLabel(1)!=null && getSliceLabel(1).equals("Red");
 	}
-	
+
 	/** Returns true if this is a 3-slice HSB stack. */
 	public boolean isHSB() {
-    	return nSlices==3 && getSliceLabel(1)!=null && getSliceLabel(1).equals("Hue");
+		return nSlices==3 && getSliceLabel(1)!=null && getSliceLabel(1).equals("Hue");
 	}
 
 	/** Returns true if this is a Lab stack. */
 	public boolean isLab() {
-    	return nSlices==3 && getSliceLabel(1)!=null && getSliceLabel(1).equals("L*");	
+		return nSlices==3 && getSliceLabel(1)!=null && getSliceLabel(1).equals("L*");
 	}
 
-	/** Returns true if this is a virtual (disk resident) stack. 
-		This method is overridden by the VirtualStack subclass. */
+	/** Returns true if this is a virtual (disk resident) stack.
+	 This method is overridden by the VirtualStack subclass. */
 	public boolean isVirtual() {
 		return false;
 	}
@@ -351,14 +347,13 @@ public class ImageStack {
 		String v = isVirtual()?"(V)":"";
 		return ("stack["+getWidth()+"x"+getHeight()+"x"+getSize()+v+"]");
 	}
-	
-	/** Returns, as a double, the value of the specified voxel.
-	 * Throws an IndexOutOfBoundsException if x, y or z are
-	 * beyond the stack limits. Use the ImagePlus.getStackIndex()
-	 * method to convert a C,Z,T hyperstack position (one-based)
-	 * into a z index (zero-based).
-	 * @see ij.ImagePlus#getStackIndex
-	*/
+
+	/** Returns, as a double, the specified voxel. Returns
+	 * NaN if x, y or z are beyond the stack limits. Use the
+	 * ImagePlus.getStackIndex() method to convert a C,Z,T
+	 * hyperstack position (one-based) into a z index (zero-based).
+	 * @see ImagePlus#getStackIndex
+	 */
 	public final double getVoxel(int x, int y, int z) {
 		if (x>=0 && x<width && y>=0 && y<height && z>=0 && z<nSlices) {
 			switch (type) {
@@ -379,7 +374,7 @@ public class ImageStack {
 		} else
 			throw new IndexOutOfBoundsException();
 	}
-		
+
 	/* Sets the value of the specified voxel. */
 	public final void setVoxel(int x, int y, int z, double value) {
 		if (x>=0 && x<width && y>=0 && y<height && z>=0 && z<nSlices) {
@@ -411,7 +406,7 @@ public class ImageStack {
 			}
 		}
 	}
-	
+
 	public float[] getVoxels(int x0, int y0, int z0, int w, int h, int d, float[] voxels) {
 		boolean inBounds = x0>=0 && x0+w<=width && y0>=0 && y0+h<=height && z0>=0 && z0+d<=nSlices;
 		if (voxels==null || voxels.length!=w*h*d)
@@ -534,7 +529,7 @@ public class ImageStack {
 			}
 		}
 	}
-	
+
 	/** Experimental */
 	public void setVoxels(int x0, int y0, int z0, int w, int h, int d, float[] voxels, int channel) {
 		if (getBitDepth()!=24) {
@@ -568,7 +563,7 @@ public class ImageStack {
 	/** Experimental */
 	public void drawSphere(double radius, int xc, int yc, int zc) {
 		int diameter = (int)Math.round(radius*2);
-	    double r = radius;
+		double r = radius;
 		int xmin=(int)(xc-r+0.5), ymin=(int)(yc-r+0.5), zmin=(int)(zc-r+0.5);
 		int xmax=xmin+diameter, ymax=ymin+diameter, zmax=zmin+diameter;
 		double r2 = r*r;
@@ -586,7 +581,7 @@ public class ImageStack {
 		}
 	}
 
-	
+
 	/** Returns the bit depth (8=byte, 16=short, 24=RGB, 32=float). */
 	public int getBitDepth() {
 		if (type==UNKNOWN && stack!=null && stack.length>0)
@@ -599,7 +594,7 @@ public class ImageStack {
 		}
 		return 0;
 	}
-	
+
 	private int getType(ImageProcessor ip) {
 		int bitDepth = ip.getBitDepth();
 		switch (bitDepth) {
@@ -612,29 +607,29 @@ public class ImageStack {
 	}
 
 	/** Creates a new ImageStack.
-	*  @param width  width in pixels
-	*  @param height height in pixels
-	*  @param depth number of images
-	*  @param bitdepth  8, 16, 32 (float) or 24 (RGB)
-	*/
-	 public static ImageStack create(int width, int height, int depth, int bitdepth) {
+	 *  @param width  width in pixels
+	 *  @param height height in pixels
+	 *  @param depth number of images
+	 *  @param bitdepth  8, 16, 32 (float) or 24 (RGB)
+	 */
+	public static ImageStack create(int width, int height, int depth, int bitdepth) {
 		ImageStack stack =  IJ.createImage("", width, height, depth, bitdepth).getStack();
 		if (bitdepth==16 || bitdepth==32) {
 			stack.min = Double.MAX_VALUE;
 			stack.max = 0.0;
 		}
 		return stack;
-	 }
-	 
+	}
+
 	/** Duplicates this stack. */
-	 public ImageStack duplicate() {
-	 	return crop(0, 0, 0, width, height, getSize());
-	 }
-	 
+	public ImageStack duplicate() {
+		return crop(0, 0, 0, width, height, getSize());
+	}
+
 	/** Creates a new stack by cropping this one. */
-	 public ImageStack crop(int x, int y, int z, int width, int height, int depth) {
-	 	if (x<0||y<0||z<0||x+width>this.width||y+height>this.height||z+depth>getSize())
-	 		throw new IllegalArgumentException("Argument out of range");
+	public ImageStack crop(int x, int y, int z, int width, int height, int depth) {
+		if (x<0||y<0||z<0||x+width>this.width||y+height>this.height||z+depth>getSize())
+			throw new IllegalArgumentException("Argument out of range");
 		ImageStack stack2 = new ImageStack(width, height, getColorModel());
 		for (int i=z; i<z+depth; i++) {
 			ImageProcessor ip2 = this.getProcessor(i+1);
@@ -643,10 +638,10 @@ public class ImageStack {
 			stack2.addSlice(this.getSliceLabel(i+1), ip2);
 		}
 		return stack2;
-	 }
-	 
+	}
+
 	/** Creates a float version of this stack. */
-	 public ImageStack convertToFloat() {
+	public ImageStack convertToFloat() {
 		ImageStack stack2 = new ImageStack(width, height, getColorModel());
 		for (int i=1; i<=getSize(); i++) {
 			ImageProcessor ip2 = this.getProcessor(i);
@@ -654,12 +649,12 @@ public class ImageStack {
 			stack2.addSlice(this.getSliceLabel(i), ip2);
 		}
 		return stack2;
-	 }
-	 
-	 int viewers(int inc) {
-	 	viewers += inc;
-	 	if (IJ.debugMode) IJ.log("stack.viewers: "+viewers);
-	 	return viewers;
-	 }
+	}
+
+	int viewers(int inc) {
+		viewers += inc;
+		if (IJ.debugMode) IJ.log("stack.viewers: "+viewers);
+		return viewers;
+	}
 
 }

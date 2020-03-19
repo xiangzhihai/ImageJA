@@ -19,7 +19,6 @@ public class WaitForUserDialog extends Dialog implements ActionListener, KeyList
 	
 	public WaitForUserDialog(String title, String text) {
 		super(IJ.getInstance(), title, false);
-		IJ.protectStatusBar(false);
 		if (text!=null && text.startsWith("IJ: "))
 			text = text.substring(4);
 		label = new MultiLineLabel(text, 175);
@@ -44,7 +43,7 @@ public class WaitForUserDialog extends Dialog implements ActionListener, KeyList
 		addKeyListener(this);
 		pack();
 		if (xloc==-1)
-			GUI.centerOnImageJScreen(this);
+			GUI.center(this);
 		else
 			setLocation(xloc, yloc);
 		setAlwaysOnTop(true);

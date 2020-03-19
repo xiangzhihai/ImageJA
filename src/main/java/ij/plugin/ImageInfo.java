@@ -12,7 +12,6 @@ import ij.macro.Interpreter;
 import java.awt.*;
 import java.util.*;
 import java.lang.reflect.*;
-import java.awt.geom.Rectangle2D;
 
 /** This plugin implements the Image/Show Info command. */
 public class ImageInfo implements PlugIn {
@@ -24,14 +23,14 @@ public class ImageInfo implements PlugIn {
 		else {
 			String info = getImageInfo(imp);
 			if (info.contains("----"))
-				showInfo(imp, info, 450, 600);
+				showInfo(imp, info, 450, 500);
 			else {
-				int inc = info.contains("No selection")?0:130;
-				showInfo(imp, info, 400, 500+inc);
+				int inc = info.contains("No Selection")?0:75;
+				showInfo(imp, info, 300, 350+inc);
 			}
 		}
 	}
-
+	
 	private void showInfo() {
 		String s = new String("");
 		if (IJ.getInstance()!=null)
@@ -41,14 +40,6 @@ public class ImageInfo implements PlugIn {
 		s += "ImageJ home: "+IJ.getDir("imagej")+"\n";
 		s += "Java home: "+System.getProperty("java.home")+"\n";
 		s += "Screen size: "+screen.width+"x"+screen.height+"\n";
-		s += "GUI scale: "+IJ.d2s(Prefs.getGuiScale(),2)+"\n";
-		//s += "Active window: "+WindowManager.getActiveWindow()+"\n";
-		String path = Prefs.getCustomPropsPath();
-		if (path!=null)
-			s += "*Custom properties*: "+ path +"\n";
-		path = Prefs.getCustomPrefsPath();
-		if (path!=null)
-			s += "*Custom preferences*: "+ path +"\n";
 		if (IJ.isMacOSX()) {
 			String time = " ("+ImageWindow.setMenuBarTime+"ms)";
 			s += "SetMenuBarCount: "+Menus.setMenuBarCount+time+"\n";
@@ -74,9 +65,9 @@ public class ImageInfo implements PlugIn {
 		if (infoProperty!=null)
 			return infoProperty + "\n------------------------------------------------------\n" + info;
 		else
-			return info;
+			return info;		
 	}
-
+	
 	private String getExifData(ImagePlus imp) {
 		FileInfo fi = imp.getOriginalFileInfo();
 		if (fi==null)
@@ -217,8 +208,8 @@ public class ImageInfo implements PlugIn {
 	    		s += "Bits per pixel: 32 (RGB)\n";
 	    		break;
     	}
-		double interval = cal.frameInterval;
-		double fps = cal.fps;
+		double interval = cal.frameInterval;	
+		double fps = cal.fps;	
     	if (stackSize>1) {
     		ImageStack stack = imp.getStack();
     		int slice = imp.getCurrentSlice();
@@ -265,7 +256,7 @@ public class ImageInfo implements PlugIn {
 				s += "Stack type: " + stackType+ "\n";
 			}
 		}
-
+		
 		if (imp.isLocked())
 			s += "**Locked**\n";
 		if (ip.getMinThreshold()==ImageProcessor.NO_THRESHOLD)
@@ -279,14 +270,7 @@ public class ImageInfo implements PlugIn {
 				lower = cal.getCValue((int)lower);
 				upper = cal.getCValue((int)upper);
 			}
-			int lutMode = ip.getLutUpdateMode();
-			String mode = "red";
-			switch (lutMode) {
-				case ImageProcessor.BLACK_AND_WHITE_LUT: mode="B&W"; break;
-				case ImageProcessor.NO_LUT_UPDATE: mode="invisible"; break;
-				case ImageProcessor.OVER_UNDER_LUT: mode="over/under"; break;
-			}
-			s += "Threshold: "+d2s(lower)+"-"+d2s(upper)+uncalibrated+" ("+mode+")\n";
+			s += "Threshold: "+d2s(lower)+"-"+d2s(upper)+uncalibrated+"\n";
 		}
 		ImageCanvas ic = imp.getCanvas();
     	double mag = ic!=null?ic.getMagnification():1.0;
@@ -295,16 +279,15 @@ public class ImageInfo implements PlugIn {
 		if (ic!=null)
 			s += "ScaleToFit: " + ic.getScaleToFit() + "\n";
 
-
-	    String valueUnit = cal.getValueUnit();
+			
 	    if (cal.calibrated()) {
 	    	s += " \n";
 	    	int curveFit = cal.getFunction();
 			s += "Calibration function: ";
 			if (curveFit==Calibration.UNCALIBRATED_OD)
-				s += "Uncalibrated OD\n";
+				s += "Uncalibrated OD\n";	    	
 			else if (curveFit==Calibration.CUSTOM)
-				s += "Custom lookup table\n";
+				s += "Custom lookup table\n";	    	
 			else
 				s += CurveFitter.fList[curveFit]+"\n";
 			double[] c = cal.getCoefficients();
@@ -318,10 +301,7 @@ public class ImageInfo implements PlugIn {
 				if (c.length>=5)
 					s += "  c: "+IJ.d2s(c[4],6)+"\n";
 			}
-			s += "  Unit: \""+valueUnit+"\"\n";
-	    } else if (valueUnit!=null && !valueUnit.equals("Gray Value")) {
-			s += "Calibration function: None\n";
-			s += "  Unit: \""+valueUnit+"\"\n";
+			s += "  Unit: \""+cal.getValueUnit()+"\"\n";	    	
 	    } else
 	    	s += "Uncalibrated\n";
 
@@ -329,27 +309,21 @@ public class ImageInfo implements PlugIn {
 		if (fi!=null) {
 			if (fi.url!=null && !fi.url.equals(""))
 				s += "URL: " + fi.url + "\n";
-			else {
-				String defaultDir = (fi.directory==null || fi.directory.length()==0)?System.getProperty("user.dir"):"";
-				if (defaultDir.length()>0) {
-					defaultDir = defaultDir.replaceAll("\\\\", "/");
-					defaultDir += "/";
-				}
-				s += "Path: " + defaultDir + fi.getFilePath() + "\n";
-			}
+			else if (fi.directory!=null && fi.fileName!=null)
+				s += "Path: " + fi.directory + fi.fileName + "\n";
 		}
-
+		
 		ImageWindow win = imp.getWindow();
 		if (win!=null) {
 			Point loc = win.getLocation();
-			Rectangle bounds = GUI.getScreenBounds(win);
-			s += "Screen location: "+(loc.x-bounds.x)+","+(loc.y-bounds.y)+" ("+bounds.width+"x"+bounds.height+")\n";
+			Dimension screen = IJ.getScreenSize();
+			s += "Screen location: "+loc.x+","+loc.y+" ("+screen.width+"x"+screen.height+")\n";
 		}
 		if (IJ.isMacOSX()) {
 			String time = " ("+ImageWindow.setMenuBarTime+"ms)";
 			s += "SetMenuBarCount: "+Menus.setMenuBarCount+time+"\n";
 		}
-
+		
 		String zOrigin = stackSize>1||cal.zOrigin!=0.0?","+d2s(cal.zOrigin):"";
 		String origin = d2s(cal.xOrigin)+","+d2s(cal.yOrigin)+zOrigin;
 		if (!origin.equals("0,0") || cal.getInvertY())
@@ -413,37 +387,33 @@ public class ImageInfo implements PlugIn {
     		String name = roi.getName();
     		if (name!=null) {
 				s += " (\"" + name + "\")";
-				if (points!=null) s += "\n " + points;
+				if (points!=null) s += "\n " + points;		
 			} else if (points!=null)
 				s += points;
-			s += "\n";
+			s += "\n";		
+	    	Rectangle r = roi.getBounds();
 	    	if (roi instanceof Line) {
 	    		Line line = (Line)roi;
-	    		s += "  X1: " + IJ.d2s(cal.getX(line.x1d)) + "\n";
-	    		s += "  Y1: " + IJ.d2s(cal.getY(line.y1d, imp.getHeight())) + "\n";
-	    		s += "  X2: " + IJ.d2s(cal.getX(line.x2d)) + "\n";
-	    		s += "  Y2: " + IJ.d2s(cal.getY(line.y2d, imp.getHeight())) + "\n";
+	    		s += "  X1: " + IJ.d2s(line.x1d*cal.pixelWidth) + "\n";
+	    		s += "  Y1: " + IJ.d2s(yy(line.y1d,imp)*cal.pixelHeight) + "\n";
+	    		s += "  X2: " + IJ.d2s(line.x2d*cal.pixelWidth) + "\n";
+	    		s += "  Y2: " + IJ.d2s(yy(line.y2d,imp)*cal.pixelHeight) + "\n";
+			} else if (cal.scaled()) {
+				s += "  X: " + IJ.d2s(cal.getX(r.x)) + " (" + r.x + ")\n";
+				s += "  Y: " + IJ.d2s(cal.getY(r.y,imp.getHeight())) + " (" +  r.y + ")\n";
+				s += "  Width: " + IJ.d2s(r.width*cal.pixelWidth) + " (" +  r.width + ")\n";
+				s += "  Height: " + IJ.d2s(r.height*cal.pixelHeight) + " (" +  r.height + ")\n";
 			} else {
-				Rectangle2D.Double r = roi.getFloatBounds();
-				int decimals = r.x==(int)r.x && r.y==(int)r.y && r.width==(int)r.width && r.height==(int)r.height ?
-						0 : 2;
-				if (cal.scaled()) {
-					s += "  X: " + IJ.d2s(cal.getX(r.x)) + " (" + IJ.d2s(r.x, decimals) + ")\n";
-					s += "  Y: " + IJ.d2s(cal.getY(r.y,imp.getHeight())) + " (" +  IJ.d2s(yy(r.y, imp), decimals) + ")\n";
-					s += "  Width: " + IJ.d2s(r.width*cal.pixelWidth) + " (" +  IJ.d2s(r.width, decimals) + ")\n";
-					s += "  Height: " + IJ.d2s(r.height*cal.pixelHeight) + " (" +  IJ.d2s(r.height, decimals) + ")\n";
-				} else {
-					s += "  X: " + IJ.d2s(r.x, decimals) + "\n";
-					s += "  Y: " + IJ.d2s(yy(r.y, imp), decimals) + "\n";
-					s += "  Width: " + IJ.d2s(r.width, decimals) + "\n";
-					s += "  Height: " + IJ.d2s(r.height, decimals) + "\n";
-				}
+				s += "  X: " + r.x + "\n";
+				s += "  Y: " + yy(r.y,imp) + "\n";
+				s += "  Width: " + r.width + "\n";
+				s += "  Height: " + r.height + "\n";
 			}
 	    }
-
+	    
 		return s;
 	}
-
+	
 	private String displayRanges(ImagePlus imp) {
 		LUT[] luts = imp.getLuts();
 		if (luts==null)
@@ -458,7 +428,7 @@ public class ImageInfo implements PlugIn {
 		}
 		return s;
 	}
-
+	
 	// returns a Y coordinate based on the "Invert Y Coodinates" flag
 	private int yy(int y, ImagePlus imp) {
 		return Analyzer.updateY(y, imp.getHeight());
@@ -475,7 +445,7 @@ public class ImageInfo implements PlugIn {
 		//ed.setSize(width, height);
 		//ed.create("Info for "+imp.getTitle(), info);
 	}
-
+	
     private String d2s(double n) {
 		return IJ.d2s(n,Tools.getDecimalPlaces(n));
     }

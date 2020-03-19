@@ -1,6 +1,5 @@
 package ij.plugin;
 import ij.*;
-import static ij.IJ.createImage;
 import java.awt.*;
 import java.awt.image.*;
 import java.awt.event.*;
@@ -18,7 +17,6 @@ import ij.measure.*;
 	Based largely on HistogramWindow.java by Wayne Rasband.
 	July 2002: Modified by Daniel Marsh and renamed CalibrationBar.
 	January 2013: Displays calibration bar as an overlay.
-	Jan 2020: calibration bar on separate image, Norbert Vischer
 */
 
 public class CalibrationBar implements PlugIn {
@@ -31,8 +29,8 @@ public class CalibrationBar implements PlugIn {
 	final static String CALIBRATION_BAR = "|CB|";
 	static int nBins = 256;
 	static final String[] colors = {"White","Light Gray","Dark Gray","Black","Red","Green","Blue","Yellow","None"};
-	static final String[] locations = {"Upper Right","Lower Right","Lower Left", "Upper Left", "At Selection", "Separate Image"};
-	static final int UPPER_RIGHT=0, LOWER_RIGHT=1, LOWER_LEFT=2, UPPER_LEFT=3, AT_SELECTION=4, SEPARATE_IMAGE = 5;
+	static final String[] locations = {"Upper Right","Lower Right","Lower Left", "Upper Left", "At Selection"};
+	static final int UPPER_RIGHT=0, LOWER_RIGHT=1, LOWER_LEFT=2, UPPER_LEFT=3, AT_SELECTION=4;
 
 	private static String sFillColor = colors[0];
 	private static String sTextColor = colors[3];
@@ -42,7 +40,6 @@ public class CalibrationBar implements PlugIn {
 	private static int sFontSize = 12;
 	private static int sDecimalPlaces = 0;
 	private static boolean sFlatten;
-	private static boolean sBoldText;
 	
 	private String fillColor = sFillColor;
 	private String textColor = sTextColor;
@@ -52,7 +49,6 @@ public class CalibrationBar implements PlugIn {
 	private int fontSize = sFontSize;
 	private int decimalPlaces = sDecimalPlaces;
 	private boolean flatten = sFlatten;
-	private boolean boldText = sBoldText;
 
 	ImagePlus imp;
 	LiveDialog gd;
@@ -70,6 +66,7 @@ public class CalibrationBar implements PlugIn {
 	int win_width;
 	int userPadding = 0;
 	int fontHeight = 0;
+	boolean boldText;
 	boolean showUnit;
 	Object backupPixels;
 	byte[] byteStorage;
@@ -116,44 +113,22 @@ public class CalibrationBar implements PlugIn {
 			Overlay overlay = imp.getOverlay();
 			if (overlay!=null) {
 				overlay.remove(CALIBRATION_BAR);
-				overlay.setIsCalibrationBar(false);
 				imp.draw();
 			}
 			return;
 		}
-		updateColorBar();	
-		boolean separate = location.equals(locations[SEPARATE_IMAGE]);
-		if (flatten || separate) {
+		updateColorBar();
+		if (flatten) {
 			imp.deleteRoi();
 			IJ.wait(100);
-			ImagePlus imp2 = null;
-			if(!separate){
-				imp2 = imp.flatten();
-				imp2.setTitle(imp.getTitle()+" with bar");
-			}
+			ImagePlus imp2 = imp.flatten();
+			imp2.setTitle(imp.getTitle()+" with bar");
 			Overlay overlay = imp.getOverlay();
-			if (overlay!=null) {	
-				if(separate){	
-					Overlay overlaySep = overlay.duplicate();	
-					overlay.setIsCalibrationBar(false);
-					for (int jj=overlaySep.size()-1; jj>=0; jj--) {//isolate CB components
-						Roi roi = overlaySep.get(jj);
-						if(roi.getName() == null || !roi.getName().equals(CALIBRATION_BAR))
-							overlaySep.remove(roi);
-					}
-					Rectangle r = overlaySep.get(0).getBounds();
-					overlaySep.translate(-r.x, -r.y);
-					ImagePlus impSep = IJ.createImage("CBar", "RGB", r.width, r.height, 1);
-					impSep.setOverlay(overlaySep);
-					impSep = impSep.flatten();//ignore the 'overlay' checkbox
-					impSep.setTitle("CBar");
-					impSep.show();
-				}
+			if (overlay!=null) {
 				overlay.remove(CALIBRATION_BAR);
 				imp.draw();
-			}			
-			if(imp2 != null)
-				imp2.show();			
+			}
+			imp2.show();
 		}
 	}
 
@@ -174,9 +149,6 @@ public class CalibrationBar implements PlugIn {
 			drawBarAsOverlay(imp, imp.getWidth()-win_width-insetPad,
 				 imp.getHeight() - (int)(WIN_HEIGHT*zoom + 2*(int)(YMARGIN*zoom)) - insetPad);
 		}
-		else if ( location.equals(locations[SEPARATE_IMAGE])){
-			drawBarAsOverlay(imp, insetPad, insetPad);
-		}
 		this.imp.updateAndDraw();
 	}
 
@@ -193,9 +165,6 @@ public class CalibrationBar implements PlugIn {
 		boolean[] states = {boldText, !flatten, showUnit};
 		gd.setInsets(10, 30, 0);
 		gd.addCheckboxGroup(2, 2, labels, states);
-		Checkbox overlayBox = (Checkbox)(gd.getCheckboxes().elementAt(1));
-		if (location.equals(locations[SEPARATE_IMAGE]))
-			overlayBox.setEnabled(false);
 		gd.showDialog();
 		if (gd.wasCanceled())
 			return false;
@@ -218,7 +187,6 @@ public class CalibrationBar implements PlugIn {
 			sNumLabels = numLabels;
 			sFontSize = fontSize;
 			sDecimalPlaces = decimalPlaces;
-			sBoldText = boldText;
 		}
 		return true;
 	}
@@ -495,11 +463,6 @@ public class CalibrationBar implements PlugIn {
 			boldText = ( (Checkbox)(checkbox.elementAt(0)) ).getState();
 			flatten = !( (Checkbox)(checkbox.elementAt(1)) ).getState();
 			showUnit = ( (Checkbox)(checkbox.elementAt(2)) ).getState();
-			Checkbox overlayBox = (Checkbox)(checkbox.elementAt(1) );
-			if (location.equals(locations[SEPARATE_IMAGE]))
-					overlayBox.setEnabled(false);
-			else
-					overlayBox.setEnabled(true);
 			updateColorBar();
 		}
 

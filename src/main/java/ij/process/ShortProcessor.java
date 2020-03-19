@@ -15,6 +15,7 @@ public class ShortProcessor extends ImageProcessor {
 	private short[] snapshotPixels;
 	private byte[] LUT;
 	private boolean fixedScale;
+	private int bgValue;
 
 
 	/** Creates a new ShortProcessor using the specified pixel array and ColorModel.
@@ -253,11 +254,9 @@ public class ShortProcessor extends ImageProcessor {
 
 	/**
 	Sets the min and max variables that control how real
-	pixel values are mapped to 0-255 screen values. With
-	signed 16-bit images, use IJ.setMinAndMax(imp,min,max).
+	pixel values are mapped to 0-255 screen values.
 	@see #resetMinAndMax
 	@see ij.plugin.frame.ContrastAdjuster 
-	@see ij.IJ#setMinAndMax(ij.ImagePlus,double,double)
 	*/
 	public void setMinAndMax(double minimum, double maximum) {
 		if (minimum==0.0 && maximum==0.0)
@@ -397,7 +396,7 @@ public class ShortProcessor extends ImageProcessor {
 			else
 				return cTable[pixels[y*width + x]&0xffff];
 		} else
-			return Float.NaN;
+			return 0f;
 	}
 
 	/**	Returns a reference to the short array containing this image's
@@ -729,7 +728,7 @@ public class ShortProcessor extends ImageProcessor {
 		double xlimit = width-1.0, xlimit2 = width-1.001;
 		double ylimit = height-1.0, ylimit2 = height-1.001;
 		// zero is 32768 for signed images
-		int background = isSigned16Bit()?32768:0; 
+		int background = isSigned16Bit()?bgValue+32768:bgValue; 
 		
 		if (interpolationMethod==BICUBIC) {
 			for (int y=roiY; y<(roiY + roiHeight); y++) {
@@ -968,7 +967,6 @@ public class ShortProcessor extends ImageProcessor {
 				setValue(0.0);
 		} else
 			fgColor = (int)(getMin() + (getMax()-getMin())*(bestIndex/255.0));
-		fillValueSet = true;
 	}
 	
 	/** Sets the default fill/draw value, where 0<=value<=65535). */
@@ -976,16 +974,16 @@ public class ShortProcessor extends ImageProcessor {
 			fgColor = (int)value;
 			if (fgColor<0) fgColor = 0;
 			if (fgColor>65535) fgColor = 65535;
-			fillValueSet = true;
 	}
 
-	/** Does nothing. The rotate() and scale() methods always zero fill. */
 	public void setBackgroundValue(double value) {
+		bgValue = (int)value;
+		if (bgValue<0) bgValue = 0;
+		if (bgValue>65535) bgValue = 65535;
 	}
 
-	/** Always returns 0. */
 	public double getBackgroundValue() {
-		return 0.0;
+		return bgValue;
 	}
 
 	/** Returns 65,536 bin histogram of the current ROI, which

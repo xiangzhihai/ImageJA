@@ -16,35 +16,39 @@ public class FFTCustomFilter implements  PlugInFilter, Measurements {
 	private static int filterIndex = 1;
 	private int slice;
 	private int stackSize;	
+	private boolean done;
 	private ImageProcessor filter;
 	private static boolean processStack;
 	private boolean padded;
-	private int originalWidth;
+	private	int originalWidth;
 	private int originalHeight;
 	private Rectangle rect = new Rectangle();
 
 	public int setup(String arg, ImagePlus imp) {
  		this.imp = imp;
- 		if (imp==null) {
- 			IJ.noImage();
- 			return DONE;
- 		}
- 		this.stackSize = imp.getStackSize();
-		filter = getFilter();
-		if (filter==null)
-			return DONE;
+ 		if (imp==null)
+ 			{IJ.noImage(); return DONE;}
+ 		stackSize = imp.getStackSize();
 		if (imp.getProperty("FHT")!=null) {
 			IJ.error("FFT Custom Filter", "Spatial domain (non-FFT) image required");
 			return DONE;
-		} else
+		}
+		else
 			return processStack?DOES_ALL+DOES_STACKS:DOES_ALL;
 	}
 
 	public void run(ImageProcessor ip) {
 		slice++;
+		if (done)
+			return;
 		FHT fht = newFHT(ip);
-		if (slice==1)
-			filter = resizeFilter(filter, fht.getWidth());
+		if (slice==1) {
+			filter = getFilter(fht.getWidth());
+			if (filter==null) {
+				done = true;
+				return;
+			}
+		}
 		((FHT)fht).transform();
 		customFilter(fht);		
 		doInverseTransform(fht, ip);
@@ -130,7 +134,7 @@ public class FFTCustomFilter implements  PlugInFilter, Measurements {
 		fht.swapQuadrants(filter);
 	}
 	
-	ImageProcessor getFilter() {
+	ImageProcessor getFilter(int size) {
 		int[] wList = WindowManager.getIDList();
 		if (wList==null || wList.length<2) {
 			IJ.error("FFT", "A filter (as an open image) is required.");
@@ -166,6 +170,7 @@ public class FFTCustomFilter implements  PlugInFilter, Measurements {
 		ImageProcessor filter = filterImp.getProcessor();
 		if (filter!=null && filter.getBitDepth()!=32)		
 			filter =  filter.convertToByte(true);		
+		filter = resizeFilter(filter, size);
 		return filter;
 	}
 	

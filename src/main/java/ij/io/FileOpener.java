@@ -9,7 +9,7 @@ import ij.gui.*;
 import ij.process.*;
 import ij.measure.*;
 import ij.*;
-import ij.plugin.frame.*;
+import ij.plugin.frame.ThresholdAdjuster;
 
 /**
  * Opens or reverts an image specified by a FileInfo object. Images can
@@ -48,11 +48,7 @@ public class FileOpener {
 	
 	/** Opens the image and returns it has an ImagePlus object. */
 	public ImagePlus openImage() {
-		boolean wasRecording = Recorder.record;
-		Recorder.record = false;
-		ImagePlus imp = open(false);
-		Recorder.record = wasRecording;
-		return imp;
+		return open(false);
 	}
 
 	/** Opens the image and displays it. */
@@ -165,7 +161,7 @@ public class FileOpener {
 			imp.setProperty(Plot.PROPERTY_KEY, plot);
 		} catch (Exception e) { IJ.handleException(e); }
 		if (fi.roi!=null)
-			decodeAndSetRoi(imp, fi);
+			imp.setRoi(RoiDecoder.openFromByteArray(fi.roi));
 		if (fi.overlay!=null)
 			setOverlay(imp, fi.overlay);
 		if (show) imp.show();
@@ -185,7 +181,7 @@ public class FileOpener {
 				overlay.drawNames(proto.getDrawNames());
 				overlay.drawBackgrounds(proto.getDrawBackgrounds());
 				overlay.setLabelColor(proto.getLabelColor());
-				overlay.setLabelFont(proto.getLabelFont(), proto.scalableLabels());
+				overlay.setLabelFont(proto.getLabelFont());
 			}
 			overlay.add(roi);
 		}
@@ -216,7 +212,7 @@ public class FileOpener {
 				if (pixels==null)
 					break;
 				stack.addSlice(null, pixels);
-				skip = fi.getGap();
+				skip = fi.gapBetweenImages;
 				if (!silentMode)
 					IJ.showProgress(i, fi.nImages);
 			}
@@ -230,9 +226,9 @@ public class FileOpener {
 			stack.trim();
 		}
 		if (!silentMode) IJ.showProgress(1.0);
-		if (stack.size()==0)
+		if (stack.getSize()==0)
 			return null;
-		if (fi.sliceLabels!=null && fi.sliceLabels.length<=stack.size()) {
+		if (fi.sliceLabels!=null && fi.sliceLabels.length<=stack.getSize()) {
 			for (int i=0; i<fi.sliceLabels.length; i++)
 				stack.setSliceLabel(fi.sliceLabels[i], i+1);
 		}
@@ -240,7 +236,7 @@ public class FileOpener {
 		if (fi.info!=null)
 			imp.setProperty("Info", fi.info);
 		if (fi.roi!=null)
-			decodeAndSetRoi(imp, fi);
+			imp.setRoi(RoiDecoder.openFromByteArray(fi.roi));
 		if (fi.overlay!=null)
 			setOverlay(imp, fi.overlay);
 		if (show) imp.show();
@@ -252,19 +248,12 @@ public class FileOpener {
 		if (!silentMode) IJ.showProgress(1.0);
 		return imp;
 	}
-	
-	private void decodeAndSetRoi(ImagePlus imp, FileInfo fi) {
-		Roi roi = RoiDecoder.openFromByteArray(fi.roi);
-		imp.setRoi(roi);
-		if ((roi instanceof PointRoi) && ((PointRoi)roi).getNCounters()>1) 
-			IJ.setTool("multi-point");
-	}
 
 	void setStackDisplayRange(ImagePlus imp) {
 		ImageStack stack = imp.getStack();
 		double min = Double.MAX_VALUE;
 		double max = -Double.MAX_VALUE;
-		int n = stack.size();
+		int n = stack.getSize();
 		for (int i=1; i<=n; i++) {
 			if (!silentMode)
 				IJ.showStatus("Calculating stack min and max: "+i+"/"+n);
@@ -283,7 +272,7 @@ public class FileOpener {
 	public void revertToSaved(ImagePlus imp) {
 		if (fi==null)
 			return;
-		String path = fi.getFilePath();
+		String path = fi.directory + fi.fileName;
 		if (fi.url!=null && !fi.url.equals("") && (fi.directory==null||fi.directory.equals("")))
 			path = fi.url;
 		IJ.showStatus("Loading: " + path);
@@ -406,9 +395,6 @@ public class FileOpener {
 			}
 		}
 		
-		if (getBoolean(props, "8bitcolor"))
-			imp.setTypeToColor256(); // set type to COLOR_256
-		
 		int stackSize = imp.getStackSize();
 		if (stackSize>1) {
 			int channels = (int)getDouble(props,"channels");
@@ -466,9 +452,9 @@ public class FileOpener {
 		else if (fi.url!=null && !fi.url.equals(""))
 			is = new URL(fi.url+fi.fileName).openStream();
 		else {
-			if (fi.directory!=null && fi.directory.length()>0 && !(fi.directory.endsWith(Prefs.separator)||fi.directory.endsWith("/")))
+			if (fi.directory.length()>0 && !(fi.directory.endsWith(Prefs.separator)||fi.directory.endsWith("/")))
 				fi.directory += Prefs.separator;
-		    File f = new File(fi.getFilePath());
+		    File f = new File(fi.directory + fi.fileName);
 		    if (gzip) fi.compression = FileInfo.COMPRESSION_UNKNOWN;
 		    if (f==null || !f.exists() || f.isDirectory() || !validateFileInfo(f, fi))
 		    	is = null;
@@ -519,7 +505,7 @@ public class FileOpener {
 			+"  Bytes/pixel: " + fi.getBytesPerPixel() + "\n"
 			+(length>0?"  File length: " + length + "\n":"");
 		if (silentMode) {
-			IJ.log("Error opening "+fi.getFilePath());
+			IJ.log("Error opening "+fi.directory+fi.fileName);
 			IJ.log(msg2);
 		} else
 			IJ.error("FileOpener", msg2);

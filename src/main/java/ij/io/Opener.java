@@ -148,8 +148,8 @@ public class Opener {
 				case OJJ:  // ObjectJ project
 					IJ.runPlugIn("ObjectJ_", path);
 					break;
-				case TABLE: 
-					openTable(path);
+				case TABLE:  // ImageJ Results table
+					openResultsTable(path);
 					break;
 				case RAW:
 					IJ.runPlugIn("ij.plugin.Raw", path);
@@ -198,7 +198,6 @@ public class Opener {
 						dir = new File(sdir);
 					if (dir!=null)
 						fc.setCurrentDirectory(dir);
-					if (IJ.debugMode) IJ.log("Opener.openMultiple: "+sdir+" "+dir);
 					int returnVal = fc.showOpenDialog(IJ.getInstance());
 					if (returnVal!=JFileChooser.APPROVE_OPTION)
 						return;
@@ -316,9 +315,19 @@ public class Opener {
 			case TIFF:
 				imp = openTiff(directory, name);
 				return imp;
-			case DICOM: case TIFF_AND_DICOM:
+			case DICOM:
 				imp = (ImagePlus)IJ.runPlugIn("ij.plugin.DICOM", path);
 				if (imp.getWidth()!=0) return imp; else return null;
+			case TIFF_AND_DICOM:
+				// "hybrid" files created by GE-Senographe 2000 D */
+				imp = openTiff(directory,name);
+				ImagePlus imp2 = (ImagePlus)IJ.runPlugIn("ij.plugin.DICOM", path);
+				if (imp!=null && imp2!=null)	 {		
+					imp.setProperty("Info",imp2.getProperty("Info"));
+					imp.setCalibration(imp2.getCalibration());
+				}
+				if (imp==null) imp=imp2;
+				return imp;
 			case FITS:
 				imp = (ImagePlus)IJ.runPlugIn("ij.plugin.FITS_Reader", path);
 				if (imp.getWidth()!=0) return imp; else return null;
@@ -356,23 +365,18 @@ public class Opener {
 				else
 					return null;
 			case UNKNOWN: case TEXT:
-				return openUsingHandleExtraFileTypes(fileType, path);
+				// Call HandleExtraFileTypes plugin to see if it can handle unknown format
+				int[] wrap = new int[] {fileType};
+				imp = openWithHandleExtraFileTypes(path, wrap);
+				if (imp!=null && imp.getNChannels()>1)
+					imp = new CompositeImage(imp, IJ.COLOR);
+				fileType = wrap[0];
+				if (imp==null && fileType==UNKNOWN && IJ.getInstance()==null)
+					IJ.error("Opener", "Unsupported format or not found");
+				return imp;
 			default:
 				return null;
 		}
-	}
-	
-	// Call HandleExtraFileTypes plugin to see if it can handle unknown formats
-	// or files in TIFF format that the built in reader is unable to open.
-	private ImagePlus openUsingHandleExtraFileTypes(int fileType, String path) {
-		int[] wrap = new int[] {fileType};
-		ImagePlus imp = openWithHandleExtraFileTypes(path, wrap);
-		if (imp!=null && imp.getNChannels()>1)
-			imp = new CompositeImage(imp, IJ.COLOR);
-		fileType = wrap[0];
-		if (imp==null && (fileType==UNKNOWN||fileType==TIFF))
-			IJ.error("Opener", "Unsupported format or file not found:\n"+path);
-		return imp;
 	}
 	
 	String getPath() {
@@ -612,6 +616,7 @@ public class Opener {
 	ImagePlus openPngUsingURL(String title, URL url) {
 		if (url==null)
 			return null;
+		//System.setProperty("jsse.enableSNIExtension","false");
 		Image img = null;
 		try {
 			InputStream in = url.openStream();
@@ -634,8 +639,8 @@ public class Opener {
 		if (img!=null) {
 			try {
 				imp = new ImagePlus(name, img);
-			} catch (Exception e) {
-				IJ.error("Opener", e.getMessage()+"\n(Note: ImageJ cannot open CMYK JPEGs)\n \n"+dir+name);
+			} catch (IllegalStateException e) {
+				IJ.error("Opener", e.getMessage()+"\n(Note: IJ cannot open CMYK JPEGs)\n \n"+dir+name);
 				return null; // error loading image
 			}				
 			if (imp.getType()==ImagePlus.COLOR_RGB)
@@ -658,8 +663,7 @@ public class Opener {
 		} catch (Exception e) {
 			IJ.error("Open Using ImageIO", ""+e);
 		} 
-		if (img==null)
-			return null;
+		if (img==null) return null;
 		if (img.getColorModel().hasAlpha()) {
 			int width = img.getWidth();
 			int height = img.getHeight();
@@ -674,9 +678,7 @@ public class Opener {
 		FileInfo fi = new FileInfo();
 		fi.fileFormat = fi.IMAGEIO;
 		fi.fileName = f.getName();
-		String parent = f.getParent();
-		if (parent!=null)
-			fi.directory = parent + File.separator;
+		fi.directory = f.getParent()+File.separator;
 		imp.setFileInfo(fi);
 		return imp;
 	}
@@ -796,7 +798,7 @@ public class Opener {
 				stack.deleteLastSlice();
 			}
 			IJ.showProgress(1.0);
-			if (stack.size()==0)
+			if (stack.getSize()==0)
 				return null;
 			if (fi.fileType==FileInfo.GRAY16_UNSIGNED||fi.fileType==FileInfo.GRAY12_UNSIGNED
 			||fi.fileType==FileInfo.GRAY32_FLOAT||fi.fileType==FileInfo.RGB48) {
@@ -813,7 +815,7 @@ public class Opener {
 				imp.setProperty("Info", fi.info);
 			if (fi.description!=null && fi.description.contains("order=zct"))
 				new HyperStackConverter().shuffle(imp, HyperStackConverter.ZCT);
-			int stackSize = stack.size();
+			int stackSize = stack.getSize();
 			if (nChannels>1 && (stackSize%nChannels)==0) {
 				imp.setDimensions(nChannels, stackSize/nChannels, 1);
 				imp = new CompositeImage(imp, IJ.COMPOSITE);
@@ -834,7 +836,10 @@ public class Opener {
 		try {
 			info = td.getTiffInfo();
 		} catch (IOException e) {
-			return openUsingHandleExtraFileTypes(TIFF, directory+name);
+			String msg = e.getMessage();
+			if (msg==null||msg.equals("")) msg = ""+e;
+			IJ.error("Open TIFF", msg);
+			return null;
 		}
 		if (info==null)
 			return null;
@@ -860,7 +865,7 @@ public class Opener {
 			if (n<1 || n>fi.nImages)
 				throw new IllegalArgumentException("N out of 1-"+fi.nImages+" range");
 			long size = fi.width*fi.height*fi.getBytesPerPixel();
-			fi.longOffset = fi.getOffset() + (n-1)*(size+fi.getGap());
+			fi.longOffset = fi.getOffset() + (n-1)*(size+fi.gapBetweenImages);
 			fi.offset = 0;
 			fi.nImages = 1;
 		} else {
@@ -958,9 +963,7 @@ public class Opener {
 		if (fi!=null) {
 			fi.fileFormat = FileInfo.ZIP_ARCHIVE;
 			fi.fileName = f.getName();
-			String parent = f.getParent();
-			if (parent!=null)
-				fi.directory = parent+File.separator;
+			fi.directory = f.getParent()+File.separator;
 		}
 		return imp;
 	}
@@ -1112,9 +1115,7 @@ public class Opener {
 	public static void openResultsTable(String path) {
 		try {
 			ResultsTable rt = ResultsTable.open(path);
-			rt.showRowNumbers(true);
-			if (rt!=null)
-				rt.show("Results");
+			if (rt!=null) rt.show("Results");
 		} catch(IOException e) {
 			IJ.error("Open Results", e.getMessage());
 		}
@@ -1131,15 +1132,13 @@ public class Opener {
 				return;
 			else
 				path = dir+name;
-		} else {
-			name = (new Opener()).getName(path);
-			if (name.startsWith("Results."))
-				name = "Results";
 		}
 		try {
 			ResultsTable rt = ResultsTable.open(path);
-			if (rt!=null)
+			if (rt!=null) {
+				rt.showRowNumbers(false);
 				rt.show(name);
+			}
 		} catch(IOException e) {
 			IJ.error("Open Table", e.getMessage());
 		}
@@ -1287,7 +1286,7 @@ public class Opener {
 		else if (fi.url!=null && !fi.url.equals(""))
 			return new URL(fi.url+fi.fileName).openStream();
 		else {
-			File f = new File(fi.getFilePath());
+			File f = new File(fi.directory + fi.fileName);
 			if (f==null || f.isDirectory())
 				return null;
 			else {

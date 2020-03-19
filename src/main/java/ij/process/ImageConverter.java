@@ -5,7 +5,6 @@ import java.awt.image.*;
 import ij.*;
 import ij.gui.*;
 import ij.measure.*;
-import ij.plugin.frame.Recorder;
 
 /** This class converts an ImagePlus object to a different type. */
 public class ImageConverter {
@@ -30,7 +29,6 @@ public class ImageConverter {
 		if (type==ImagePlus.GRAY16 || type==ImagePlus.GRAY32) {
 			imp.setProcessor(null, ip.convertToByte(doScaling));
 			imp.setCalibration(imp.getCalibration()); //update calibration
-			record();
 		} else if (type==ImagePlus.COLOR_RGB)
 	    	imp.setProcessor(null, ip.convertToByte(doScaling));
 		else if (ip.isPseudoColorLut()) {
@@ -59,21 +57,9 @@ public class ImageConverter {
 			return;
 		}
 		ImageProcessor ip = imp.getProcessor();
-		if (type==ImagePlus.GRAY32)
-			record();
 		imp.trimProcessor();
 		imp.setProcessor(null, ip.convertToShort(doScaling));
 		imp.setCalibration(imp.getCalibration()); //update calibration
-	}
-	
-	private void record() {
-		if (Recorder.record) {
-			Boolean state = ImageConverter.getDoScaling();
-			if (Recorder.scriptMode())
-				Recorder.recordCall("ImageConverter.setDoScaling("+state+");", true);
-			else
-				Recorder.	recordString("setOption(\"ScaleConversions\", "+state+");\n");
-		}
 	}
 
 	/** Converts this ImagePlus to 32-bit grayscale. */
@@ -82,19 +68,15 @@ public class ImageConverter {
 			return;
 		if (!(type==ImagePlus.GRAY8||type==ImagePlus.GRAY16||type==ImagePlus.COLOR_RGB))
 			throw new IllegalArgumentException("Unsupported conversion");
-		Calibration cal = imp.getCalibration();
-		double min = cal.getCValue(imp.getDisplayRangeMin());
-		double max = cal.getCValue(imp.getDisplayRangeMax());
 		if (imp.getStackSize()>1) {
 			new StackConverter(imp).convertToGray32();
-			IJ.setMinAndMax(imp, min, max);
 			return;
 		}
 		ImageProcessor ip = imp.getProcessor();
 		imp.trimProcessor();
+		Calibration cal = imp.getCalibration();
 		imp.setProcessor(null, ip.convertToFloat());
 		imp.setCalibration(cal); //update calibration
-		IJ.setMinAndMax(imp, min, max);
 	}
 
 	/** Converts this ImagePlus to RGB. */
@@ -252,7 +234,6 @@ public class ImageConverter {
 		MedianCut mc = new MedianCut(pixels, width, height);
 		ImageProcessor ip2 = mc.convertToByte(nColors);
 	    imp.setProcessor(null, ip2);
-	    imp.setTypeToColor256();
 	}
 	
 	/** Set true to scale to 0-255 when converting short to byte or float

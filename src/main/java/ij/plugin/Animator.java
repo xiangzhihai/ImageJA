@@ -3,7 +3,6 @@ import ij.*;
 import ij.gui.*;
 import ij.process.*;
 import ij.measure.Calibration;
-import java.awt.Point;
 
 /** This plugin animates stacks. */
 public class Animator implements PlugIn {
@@ -24,8 +23,6 @@ public class Animator implements PlugIn {
 		nSlices = imp.getStackSize();
 		if (nSlices<2)
 			{IJ.error("Stack required."); return;}
-		if (imp.isLocked())
-			{IJ.beep(); IJ.showStatus("Image is locked: \""+imp.getTitle()+"\""); return;}
 		ImageWindow win = imp.getWindow();
 		if ((win==null || !(win instanceof StackWindow)) && !arg.equals("options")) {
 			if (arg.equals("next"))
@@ -86,6 +83,9 @@ public class Animator implements PlugIn {
 	}
 
 	void startAnimation() {
+		if (imp.isLocked()) {
+			return;
+		}
 		int first=firstFrame, last=lastFrame;
 		if (first<1 || first>nSlices || last<1 || last>nSlices)
 			{first=1; last=nSlices;}
@@ -130,9 +130,7 @@ public class Animator implements PlugIn {
 						sliceIncrement = 1;
 					}
 				}
-				if (imp.isLocked()) return;
 				imp.setPosition(imp.getChannel(), imp.getSlice(), frame);
-				imp.updateStatusbarValue();
 			}
 			return;
 		}
@@ -162,9 +160,7 @@ public class Animator implements PlugIn {
 						sliceIncrement = 1;
 					}
 				}
-				if (imp.isLocked()) return;
 				imp.setPosition(imp.getChannel(), slice, imp.getFrame());
-				imp.updateStatusbarValue();
 			}
 			return;
 		}
@@ -180,15 +176,12 @@ public class Animator implements PlugIn {
 				fps=count;
 				count=0;
 			}
-			ImageCanvas ic = imp.getCanvas();
-			boolean showFrameRate = !(ic!=null?ic.cursorOverImage():false);
-			if (showFrameRate)
-				IJ.showStatus((int)(fps+0.5) + " fps");
+			IJ.showStatus((int)(fps+0.5) + " fps");
 			if (time<nextTime)
 				IJ.wait((int)(nextTime-time));
 			else
 				Thread.yield();
-			nextTime += (long)Math.round(1000.0/animationRate);
+			nextTime += (long)(1000.0/animationRate);
 			slice += sliceIncrement;
 			if (slice<first) {
 				slice = first+1;
@@ -203,11 +196,9 @@ public class Animator implements PlugIn {
 					sliceIncrement = 1;
 				}
 			}
-			if (imp.isLocked()) return;
 			swin.showSlice(slice);
-			if (!showFrameRate)
-				imp.updateStatusbarValue();
 		}
+		
 	}
 
 	void doOptions() {
@@ -376,3 +367,4 @@ public class Animator implements PlugIn {
 	}
 
 }
+

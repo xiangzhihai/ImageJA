@@ -1,25 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+		http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>28.0.0</version>
+		<version>23.2.0</version>
 		<relativePath />
 	</parent>
 
 	<groupId>net.imagej</groupId>
 	<artifactId>ij</artifactId>
-<<<<<<< HEAD
-<<<<<<< HEAD
-	<version>1.52u</version>
-=======
-	<version>1.52h</version>
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-=======
-	<version>1.52h</version>
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+	<version>1.52i</version>
 
 	<name>ImageJ</name>
 	<description>ImageJ is an open source Java image processing program inspired by NIH Image for the Macintosh.</description>
@@ -82,12 +77,11 @@
 		<url>https://github.com/imagej/imagej1/issues</url>
 	</issueManagement>
 	<ciManagement>
-		<system>Travis CI</system>
-		<url>https://travis-ci.org/imagej/ImageJA</url>
+		<system>Jenkins</system>
+		<url>https://jenkins.imagej.net/</url>
 	</ciManagement>
 
 	<properties>
-		<package-name>ij</package-name>
 		<main-class>ij.ImageJ</main-class>
 		<license.licenseName>N/A</license.licenseName>
 		<license.copyrightOwners>N/A</license.copyrightOwners>
@@ -95,9 +89,6 @@
 		<scijava.jvm.version>1.6</scijava.jvm.version>
 		<scijava.jvm.build.version>1.6</scijava.jvm.build.version>
 		<javac.path>${java.home}/../lib/tools.jar</javac.path>
-
-		<!-- NB: Deploy releases to the SciJava Maven repository. -->
-		<releaseProfiles>sonatype-oss-release</releaseProfiles>
 	</properties>
 
 	<dependencies>

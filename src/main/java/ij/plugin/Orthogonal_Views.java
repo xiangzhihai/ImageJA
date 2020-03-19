@@ -40,10 +40,11 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
 	private boolean flipXZ = Prefs.flipXZ;
 	
 	private int xyX, xyY;
-	private Calibration cal, cal_xz, cal_yz;
+	private Calibration cal=null, cal_xz=new Calibration(), cal_yz=new Calibration();
 	private double magnification=1.0;
 	private Color color = Roi.getColor();
 	private double min, max;
+	private Dimension screen = IJ.getScreenSize();
 	private boolean syncZoom = true;
 	private Point crossLoc;
 	private boolean firstTime = true;
@@ -82,18 +83,16 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
 		rgb = imp.getBitDepth()==24 || hyperstack;
 		int yzBitDepth = hyperstack?24:imp.getBitDepth();
 		if (yz_image==null || yz_image.getHeight()!=imp.getHeight() || yz_image.getBitDepth()!=yzBitDepth)
-			yz_image = imp.createImagePlus();
+			yz_image = new ImagePlus();
 		xz_image = WindowManager.getImage(xzID);
 		if (xz_image==null || xz_image.getWidth()!=imp.getWidth() || xz_image.getBitDepth()!=yzBitDepth)
-			xz_image = imp.createImagePlus();
+			xz_image = new ImagePlus();
 		instance = this;
 		int mode = imp.getCompositeMode();
 		ImageProcessor ip = mode==IJ.COMPOSITE?new ColorProcessor(imp.getImage()):imp.getProcessor();
 		min = ip.getMin();
 		max = ip.getMax();
 		cal=this.imp.getCalibration();
-		cal_xz = cal.copy();
-		cal_yz = cal.copy();
 		double calx=cal.pixelWidth;
 		double caly=cal.pixelHeight;
 		double calz=cal.pixelDepth;
@@ -139,6 +138,7 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
 			int mode = imp.getCompositeMode();
 			rgb = mode==IJ.COMPOSITE;
 			ColorModel cm = rgb?null:imp.getProcessor().getColorModel();
+			//IJ.log("getStack; "+c+" "+currentChannel+" "+fp1);
 			if (cm!=null && fp1!=null && fp1.getBitDepth()!=24) {
 				fp1.setColorModel(cm);
 				fp2.setColorModel(cm);
@@ -176,35 +176,23 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
 	}
 	 
 	private void calibrate() {
-		String xunit = cal.getXUnit();
-		String yunit = cal.getYUnit();
-		String zunit = cal.getZUnit();
+		String unit=cal.getUnit();
 		double o_depth=cal.pixelDepth;
 		double o_height=cal.pixelHeight;
 		double o_width=cal.pixelWidth;
-		cal_yz.setXUnit(zunit);
-		cal_yz.setYUnit(yunit);
-		cal_yz.setZUnit(xunit);
+		cal_yz.setUnit(unit);
 		if (rotateYZ) {
 			cal_yz.pixelHeight=o_depth/az;
 			cal_yz.pixelWidth=o_height;
-			cal_yz.setXUnit(yunit);
-			cal_yz.setYUnit(zunit);
 		} else {
 			cal_yz.pixelWidth=o_depth/az;
 			cal_yz.pixelHeight=o_height;
 		}
-		if (flipXZ)
-			cal_yz.setInvertY(true);
 		yz_image.setCalibration(cal_yz);
 		yz_image.setIJMenuBar(false);
-		cal_xz.setXUnit(xunit);
-		cal_xz.setYUnit(zunit);
-		cal_xz.setZUnit(yunit);
+		cal_xz.setUnit(unit);
 		cal_xz.pixelWidth=o_width;
 		cal_xz.pixelHeight=o_depth/az;
-		if (flipXZ)
-			cal_xz.setInvertY(true);
 		xz_image.setCalibration(cal_xz);
 		xz_image.setIJMenuBar(false);
 	}
@@ -291,11 +279,14 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
 			ImageCanvas ic = yz_image.getCanvas();
 			ic.addKeyListener(this);
 			ic.addMouseListener(this);
-			ic.addMouseMotionListener(this);
+			//ic.addMouseMotionListener(this);
 			ic.setCustomRoi(true);
+			//yz_image.getWindow().addMouseWheelListener(this);
 			yzID = yz_image.getID();
 		} else {
 			ImageCanvas ic = yz_image.getWindow().getCanvas();
+			ic.addMouseListener(this);
+			//ic.addMouseMotionListener(this);
 			ic.setCustomRoi(true);
 		}
 		if (xz_image.getWindow()==null) {
@@ -303,11 +294,14 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
 			ImageCanvas ic = xz_image.getCanvas();
 			ic.addKeyListener(this);
 			ic.addMouseListener(this);
-			ic.addMouseMotionListener(this);
+			//ic.addMouseMotionListener(this);
 			ic.setCustomRoi(true);
+			//xz_image.getWindow().addMouseWheelListener(this);
 			xzID = xz_image.getID();
 		} else {
 			ImageCanvas ic = xz_image.getWindow().getCanvas();
+			ic.addMouseListener(this);
+			//ic.addMouseMotionListener(this);
 			ic.setCustomRoi(true);
 		}
 		 
@@ -338,7 +332,7 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
  				xzWin.setLocation(xyX,xyY+xyWin.getHeight());
  			if (firstTime) {
  				imp.getWindow().toFront();
- 				if (!sliceSet && imp.getSlice()==1) {
+ 				if (!sliceSet) {
 					if (hyperstack)
 						imp.setPosition(imp.getChannel(), imp.getNSlices()/2, imp.getFrame());
 					else
@@ -509,8 +503,7 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
 			}
 			fp2.setPixels(newpix);
 		}
-		if (!flipXZ)
-			fp2.flipVertical();
+		if (!flipXZ) fp2.flipVertical();
 		
 	}
 	
@@ -665,11 +658,10 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
 				pos = yz_image.getCanvas().getCursorLoc().x;
 			}
 			int z = (int)Math.round(pos/az);
-			int slice = flipXZ?imp.getNSlices()-z:z+1;
 			if (hyperstack)
-				imp.setPosition(imp.getChannel(), slice, imp.getFrame());
+				imp.setPosition(imp.getChannel(), z+1, imp.getFrame());
 			else
-				imp.setSlice(slice);
+				imp.setSlice(z+1);
 		}
 		update();
 	}
@@ -759,8 +751,8 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
 		int z=imp.getNSlices();
 		int zlice=imp.getSlice()-1;
 		int zcoord=(int)Math.round(arat*zlice);
-		if (flipXZ)
-			zcoord = (int)Math.round(arat*(z-zlice));		
+		if (flipXZ) zcoord = (int)Math.round(arat*(z-zlice));
+		
 		ImageCanvas xzCanvas = xz_image.getCanvas();
 		p=new Point (x, zcoord);
 		GeneralPath path = new GeneralPath();
@@ -771,7 +763,7 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
 			if (flipXZ)
 				zcoord=(int)Math.round(brat*(z-zlice));
 			else
-				zcoord=(int)Math.round(brat*(zlice));			
+				zcoord=(int)Math.round(brat*(zlice));
 			p=new Point (y, zcoord);
 		} else {
 			zcoord=(int)Math.round(arat*zlice);
@@ -924,18 +916,6 @@ public class Orthogonal_Views implements PlugIn, MouseListener, MouseMotionListe
 	public static int getImageID() {
 		ImagePlus img = getImage();
 		return img!=null?img.getID():0;
-	}
-
-	/** Returns the IDs of the XY, YZ and XZ images as an int array.*/
-	public static int[] getImageIDs() {
-		int[] ids = new int[3];
-		Orthogonal_Views instance2 = getInstance();
-		if (instance2==null)
-			return ids;
-		ids[0] = instance2.imp.getID();
-		ids[1] = instance2.yz_image.getID();
-		ids[2] = instance2.xz_image.getID();
-		return ids;
 	}
 
  	public static void stop() {

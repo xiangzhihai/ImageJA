@@ -116,7 +116,7 @@ public class StackWriter implements PlugIn {
 				}
 				if (!f.isDirectory() && (exists||directory.lastIndexOf(".")>directory.length()-5))
 					directory = f.getParent();
-				if (directory!=null && !(directory.endsWith(File.separator)||directory.endsWith("/")))
+				if (!(directory.endsWith(File.separator)||directory.endsWith("/")))
 					directory += "/";
 			}
 		}
@@ -141,7 +141,7 @@ public class StackWriter implements PlugIn {
 		ImagePlus imp2 = new ImagePlus();
 		imp2.setTitle(imp.getTitle());
 		Calibration cal = imp.getCalibration();
-		int nSlices = stack.size();
+		int nSlices = stack.getSize();
 		String path,label=null;
 		imp.lock();
 		for (int i=1; i<=nSlices; i++) {
@@ -157,13 +157,9 @@ public class StackWriter implements PlugIn {
 			}
 			imp2.setProcessor(null, ip);
 			String label2 = stack.getSliceLabel(i);
-			imp2.setProperty("Label", null);
-			if (label2!=null) {
-				if (label2.contains("\n"))
-					imp2.setProperty("Info", label2);
-				else
-					imp2.setProperty("Label", label2);;
-			} else {
+			if (label2!=null && label2.indexOf("\n")!=-1)
+				imp2.setProperty("Info", label2);
+			else {
 				Properties props = imp2.getProperties();
 				if (props!=null) props.remove("Info");
 			}

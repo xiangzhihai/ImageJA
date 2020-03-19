@@ -4,7 +4,6 @@ import ij.gui.*;
 import ij.process.*;
 import ij.measure.*;
 import ij.util.Tools;
-import ij.plugin.frame.Recorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
@@ -37,9 +36,9 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 	public void run(String arg) {
 		imp = IJ.getImage();
 		Roi roi = imp.getRoi();
-		ImageProcessor ip = imp.getProcessor();
 		if (roi!=null && !roi.isArea())
-			ip.resetRoi();
+			imp.deleteRoi(); // ignore any line selection
+		ImageProcessor ip = imp.getProcessor();
 		if (!showDialog(ip))
 			return;
 		doZScaling = newDepth>0 && newDepth!=oldDepth;
@@ -54,13 +53,9 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 		ip.setBackgroundValue(bgValue);
 		imp.startTiming();
 		try {
-			if (newWindow && imp.getStackSize()>1 && processStack) {
-				ImagePlus imp2 = createNewStack(imp, ip, newWidth, newHeight, newDepth);
-				if (imp2!=null) {
-					imp2.show();
-					imp2.changes = true;
-				}
-			} else {
+			if (newWindow && imp.getStackSize()>1 && processStack)
+				createNewStack(imp, ip);
+			else {
 				Overlay overlay = imp.getOverlay();
 				if (imp.getHideOverlay())
 					overlay = null;
@@ -75,34 +70,9 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 			IJ.outOfMemory("Scale");
 		}
 		IJ.showProgress(1.0);
-		record(imp, newWidth, newHeight, newDepth, interpolationMethod);			
 	}
 	
-	/** Returns a scaled copy of this image or ROI, where the
-		 'options'  string can contain 'none', 'bilinear'. 'bicubic',
-		'slice' and 'constrain'.
-	*/
-	public static ImagePlus resize(ImagePlus imp, int dstWidth, int dstHeight, int dstDepth, String options) {
-		if (options==null)
-			options = "";
-		Scaler scaler = new Scaler();
-		if (options.contains("none"))
-			scaler.interpolationMethod = ImageProcessor.NONE;
-		if (options.contains("bicubic"))
-			scaler.interpolationMethod = ImageProcessor.BICUBIC;
-		boolean processStack = imp.getStackSize()>1 && !options.contains("slice");
-		//return new ImagePlus("Untitled", ip.resize(dstWidth, dstHeight, useAveraging));
-		Roi roi = imp.getRoi();
-		ImageProcessor ip = imp.getProcessor();
-		if (roi!=null && !roi.isArea())
-			ip.resetRoi();
-		scaler.doZScaling = dstDepth!=1;
-		if (scaler.doZScaling)
-			scaler.processStack = true;
-		return scaler.createNewStack(imp, ip, dstWidth, dstHeight, dstDepth);
-	}
-	
-	private ImagePlus createNewStack(ImagePlus imp, ImageProcessor ip, int newWidth, int newHeight, int newDepth) {
+	void createNewStack(ImagePlus imp, ImageProcessor ip) {
 		int nSlices = imp.getStackSize();
 		int w=imp.getWidth(), h=imp.getHeight();
 		ImagePlus imp2 = imp.createImagePlus();
@@ -174,7 +144,10 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 			resizer.setAverageWhenDownsizing(averageWhenDownsizing);
 			imp2 = resizer.zScale(imp2, newDepth, interpolationMethod);
 		}
-		return imp2;
+		if (imp2!=null) {
+			imp2.show();
+			imp2.changes = true;
+		}
 	}
 
 	private void scale(ImageProcessor ip, Overlay overlay) {
@@ -194,7 +167,7 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 					ImageRoi iroi = (ImageRoi)roi;
 					ImageProcessor processor = iroi.getProcessor();
 					processor.setInterpolationMethod(interpolationMethod);
-					processor = processor.resize(newWidth, newHeight, averageWhenDownsizing);
+					processor =processor.resize(newWidth, newHeight, averageWhenDownsizing);
 					iroi.setProcessor(processor);
 					imp2.setOverlay(new Overlay(iroi));
 				}
@@ -221,42 +194,20 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 		}
 	}
 	
-	public static void record(ImagePlus imp, int w2, int h2, int d2, int method) {
-		if (!Recorder.scriptMode())
-			return;
-		String options = "";
-		if (method==ImageProcessor.NONE)
-			options = "none";
-		else if (method==ImageProcessor.BICUBIC)
-			options = "bicubic";
-		else
-			options = "bilinear";
-		Recorder.recordCall("imp2 = imp.resize("+w2+", "+h2+(d2>0&&d2!=imp.getStackSize()?", "+d2:"")+", \""+options+"\");");
-	}
-	
 	boolean showDialog(ImageProcessor ip) {
-		String options = Macro.getOptions();
-		boolean isMacro = options!=null;
-		if (isMacro) {
-			if (options.contains(" interpolate"))
-				options = options.replaceAll(" interpolate", " interpolation=Bilinear");
-			else if (!options.contains(" interpolation="))
-				options = options+" interpolation=None";
-			if (options.contains("width=")&&options.contains(" height=")) {
-				xstr = "-";
-				ystr = "-";
-				if (options.contains(" depth="))
-					zstr = "-";
-				else
-					zstr = "1.0";
-			}
-			Macro.setOptions(options);
+		String macroOptions = Macro.getOptions();
+		if (macroOptions!=null) {
+			if (macroOptions.indexOf(" interpolate")!=-1)
+				macroOptions.replaceAll(" interpolate", " interpolation=Bilinear");
+			else if (macroOptions.indexOf(" interpolation=")==-1)
+				macroOptions = macroOptions+" interpolation=None";
+			Macro.setOptions(macroOptions);
 		}
 		int bitDepth = imp.getBitDepth();
 		int stackSize = imp.getStackSize();
 		boolean isStack = stackSize>1;
 		oldDepth = stackSize;
-		if (isStack && !isMacro) {
+		if (isStack) {
 			xstr = "1.0";
 			ystr = "1.0";
 			zstr = "1.0";
@@ -264,13 +215,13 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 		r = ip.getRoi();
 		int width = newWidth;
 		if (width==0) width = r.width;
-		int height = (int)Math.round(((double)width*r.height/r.width));
+		int height = (int)((double)width*r.height/r.width);
 		xscale = Tools.parseDouble(xstr, 0.0);
 		yscale = Tools.parseDouble(ystr, 0.0);
 		zscale = 1.0;
 		if (xscale!=0.0 && yscale!=0.0) {
-			width = (int)Math.round(r.width*xscale);
-			height = (int)Math.round(r.height*yscale);
+			width = (int)(r.width*xscale);
+			height = (int)(r.height*yscale);
 		} else {
 			xstr = "-";
 			ystr = "-";
@@ -340,26 +291,26 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 			zscale = Tools.parseDouble(zstr, 0.0);
 		}
 		String wstr = gd.getNextString();
-		newWidth = (int)Math.round(Tools.parseDouble(wstr, 0));
-		newHeight = (int)Math.round(Tools.parseDouble(gd.getNextString(), 0));
+		newWidth = (int)Tools.parseDouble(wstr, 0);
+		newHeight = (int)Tools.parseDouble(gd.getNextString(), 0);
 		if (newHeight!=0 && (wstr.equals("-") || wstr.equals("0")))
-			newWidth = (int)Math.round(newHeight * (double)r.width/r.height);
+			newWidth = (int)(newHeight * (double)r.width/r.height);
 		else if (newWidth!=0 && newHeight==0)
-			newHeight= (int)Math.round(newWidth * (double)r.height/r.width);
+			newHeight= (int)(newWidth * (double)r.height/r.width);
 		else if (newHeight!=0 && newWidth==0)
-			newWidth = (int)Math.round(newHeight * (double)r.width/r.height);
+			newWidth = (int)(newHeight * (double)r.width/r.height);
 		if (newWidth==0 || newHeight==0) {
 			IJ.error("Scaler", "Width or height is 0");
 			return false;
 		}
 		if (xscale>0.0 && yscale>0.0) {
-			newWidth = (int)Math.round(r.width*xscale);
-			newHeight = (int)Math.round(r.height*yscale);
+			newWidth = (int)(r.width*xscale);
+			newHeight = (int)(r.height*yscale);
 		}
 		if (isStack) {
-			newDepth = (int)Math.round(Tools.parseDouble(gd.getNextString(), 0));
+			newDepth = (int)Tools.parseDouble(gd.getNextString(), 0);
 			if (newDepth==stackSize && zscale!=1.0 && zscale>0.0)
-				newDepth = (int)Math.round(stackSize*zscale);
+				newDepth = (int)(stackSize*zscale);
 		}
 		interpolationMethod = gd.getNextChoiceIndex();
 		if (bitDepth==8 || bitDepth==24)
@@ -376,6 +327,7 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 		}
 		gd.setSmartRecording(true);
 		title = gd.getNextString();
+
 		if (fillWithBackground) {
 			Color bgc = Toolbar.getBackgroundColor();
 			if (bitDepth==8)
@@ -399,11 +351,11 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 			newXScale = Tools.parseDouble(newXText,0);
 			if (newXScale==0) return;
 			if (newXScale!=xscale) {
-				int newWidth = (int)Math.round(newXScale*r.width);
+				int newWidth = (int)(newXScale*r.width);
 				widthField.setText(""+newWidth);
 				if (constainAspectRatio) {
 					yField.setText(newXText);
-					int newHeight = (int)Math.round(newXScale*r.height);
+					int newHeight = (int)(newXScale*r.height);
 					heightField.setText(""+newHeight);
 				}
 			}
@@ -412,7 +364,7 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 			newYScale = Tools.parseDouble(newYText,0);
 			if (newYScale==0) return;
 			if (newYScale!=yscale) {
-				int newHeight = (int)Math.round(newYScale*r.height);
+				int newHeight = (int)(newYScale*r.height);
 				heightField.setText(""+newHeight);
 			}
 		} else if (source==zField && fieldWithFocus==zField) {
@@ -429,13 +381,13 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 					else
 						nSlices = slices;
 				}
-				int newDepth= (int)Math.round(newZScale*nSlices);
+				int newDepth= (int)(newZScale*nSlices);
 				depthField.setText(""+newDepth);
 			}
 		} else if (source==widthField && fieldWithFocus==widthField) {
-			int newWidth = (int)Math.round(Tools.parseDouble(widthField.getText(), 0.0));
+			int newWidth = (int)Tools.parseDouble(widthField.getText(), 0.0);
 			if (newWidth!=0) {
-				int newHeight = (int)Math.round(newWidth*(double)r.height/r.width);
+				int newHeight = (int)(newWidth*(double)r.height/r.width);
 				heightField.setText(""+newHeight);
 				xField.setText("-");
 				yField.setText("-");
@@ -443,7 +395,7 @@ public class Scaler implements PlugIn, TextListener, FocusListener {
 				newYScale = 0.0;
 			}
        } else if (source==depthField && fieldWithFocus==depthField) {
-            int newDepth = (int)Math.round(Tools.parseDouble(depthField.getText(), 0.0));
+            int newDepth = (int)Tools.parseDouble(depthField.getText(), 0.0);
             if (newDepth!=0) {
                 zField.setText("-");
                 newZScale = 0.0;

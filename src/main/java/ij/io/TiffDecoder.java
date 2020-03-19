@@ -75,10 +75,6 @@ public class TiffDecoder {
 	private int photoInterp;
 		
 	public TiffDecoder(String directory, String name) {
-		if (directory==null)
-			directory = "";
-		if (directory.length()>0 && !(directory.endsWith(File.separator)||directory.endsWith("/")))
-			directory += "/";
 		this.directory = directory;
 		this.name = name;
 	}
@@ -210,8 +206,7 @@ public class TiffDecoder {
             if (index2>0) {
                 String images = id.substring(index1+7,index2);
                 int n = (int)Tools.parseDouble(images, 0.0);
-                if (n>1 && fi.compression==FileInfo.COMPRESSION_NONE)
-                	fi.nImages = n;
+                if (n>1) fi.nImages = n;
             }
         }
 	}
@@ -444,7 +439,7 @@ public class TiffDecoder {
 							else if (bitDepth==16)
 								fi.fileType = FileInfo.GRAY16_UNSIGNED;
 							else
-								error("ImageJ cannot open interleaved "+bitDepth+"-bit images.");
+								error("ImageJ can only open 8 and 16 bit/channel images ("+bitDepth+")");
 							in.seek(saveLoc);
 						}
 						break;
@@ -768,7 +763,7 @@ public class TiffDecoder {
 		long ifdOffset;
 		ArrayList list = new ArrayList();
 		if (in==null)
-			in = new RandomAccessStream(new RandomAccessFile(new File(directory+name), "r"));
+			in = new RandomAccessStream(new RandomAccessFile(new File(directory, name), "r"));
 		ifdOffset = OpenImageFileHeader();
 		if (ifdOffset<0L) {
 			in.close();

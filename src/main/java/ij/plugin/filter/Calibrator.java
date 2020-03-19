@@ -191,11 +191,17 @@ public class Calibrator implements PlugInFilter, Measurements, ActionListener {
 			unit = "Uncalibrated OD";
 		}
 		cal.setFunction(function, parameters, unit, zeroClip);
-		if (function==Calibration.NONE)
-			cal.setValueUnit(unit);
 		if (!cal.equals(calOrig))
 			imp.setCalibration(cal);
+		int bitDepth = imp.getBitDepth();
 		imp.setGlobalCalibration(global2?cal:null);
+		if (function!=Calibration.NONE && bitDepth!=8 && imp.getNChannels()==1 && !(bitDepth==16&&imp.getDefault16bitRange()>0)) {
+			ImageStatistics stats = imp.getProcessor().getStats();
+			if (imp.getDisplayRangeMin()<stats.min || imp.getDisplayRangeMax()>stats.max) {
+				imp.resetDisplayRange();
+				imp.updateAndDraw();
+			}
+		}
 		if (global2 || global2!=global1)
 			WindowManager.repaintImageWindows();
 		else
@@ -204,7 +210,7 @@ public class Calibrator implements PlugInFilter, Measurements, ActionListener {
 			FileOpener.setShowConflictMessage(true);
 		if (function!=Calibration.NONE && showPlotFlag) {
 			if (curveFitter!=null)
-				Fitter.plot(curveFitter, imp.getBitDepth()==8);
+				Fitter.plot(curveFitter, bitDepth==8);
 			else
 				showPlot(x, y, cal, fitGoodness);
 		}

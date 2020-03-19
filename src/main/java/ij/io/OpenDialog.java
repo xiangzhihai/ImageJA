@@ -46,8 +46,7 @@ import javax.swing.filechooser.*;
 				jOpen(title, getDefaultDirectory(), null);
 			else
 				open(title, getDefaultDirectory(), null);
-			if (name!=null)
-				setDefaultDirectory(dir);
+			if (name!=null) defaultDirectory = dir;
 			this.title = title;
 			recordPath = true;
 		} else {
@@ -119,7 +118,6 @@ import javax.swing.filechooser.*;
 
 	// Run JFileChooser on event dispatch thread to avoid deadlocks
 	void jOpenInvokeAndWait(final String title, final String path, final String fileName) {
-		final boolean isMacro = Thread.currentThread().getName().endsWith("Macro$");
 		try {
 			EventQueue.invokeAndWait(new Runnable() {
 				public void run() {
@@ -133,11 +131,11 @@ import javax.swing.filechooser.*;
 				if (fileName!=null)
 					fc.setSelectedFile(new File(fileName));
 				int returnVal = fc.showOpenDialog(IJ.getInstance());
-				if (returnVal!=JFileChooser.APPROVE_OPTION && isMacro)
-					{Interpreter.abort(); return;}
+				if (returnVal!=JFileChooser.APPROVE_OPTION)
+					{Macro.abort(); return;}
 				File file = fc.getSelectedFile();
-				if (file==null && isMacro)
-					{Interpreter.abort(); return;}
+				if (file==null)
+					{Macro.abort(); return;}
 				name = file.getName();
 				dir = fc.getCurrentDirectory().getPath()+File.separator;
 				}
@@ -160,13 +158,11 @@ import javax.swing.filechooser.*;
 				parent = null;
 		}
 		FileDialog fd = new FileDialog(parent, title);
-		if (path!=null) {
-			if (IJ.isWindows() && path.contains("/"))
-				path = path.replaceAll("/","\\\\"); // work around FileDialog.setDirectory() bug
+		if (path!=null)
 			fd.setDirectory(path);
-		}
 		if (fileName!=null)
 			fd.setFile(fileName);
+		//GUI.center(fd);
 		fd.show();
 		name = fd.getFile();
 		if (name==null) {
@@ -214,24 +210,19 @@ import javax.swing.filechooser.*;
 			getDirectory() + getFileName();
 	}
 
-	/** Returns the current working directory as a string
-		ending in the separator character ("/" or "\"), or
-		an empty or null string. */
+	/** Returns the current working directory, which may be null. The
+		returned string always ends with the separator character ("/" or "\").*/
 	public static String getDefaultDirectory() {
 		if (defaultDirectory==null)
 			defaultDirectory = Prefs.getDefaultDirectory();
 		return defaultDirectory;
 	}
 
-	/** Sets the current working directory.
-	 * @see ij.plugin.frame.Editor#setDefaultDirectory
-	*/
-	public static void setDefaultDirectory(String dir) {
-		if (dir!=null && dir.length()>0 && !(dir.endsWith(File.separator)||dir.endsWith("/"))) {
-			String separator = dir.contains("/")?"/":File.separator;
-			dir = dir + separator;
-		}
-		defaultDirectory = dir;
+	/** Sets the current working directory. */
+	public static void setDefaultDirectory(String defaultDir) {
+		defaultDirectory = defaultDir;
+		if (defaultDirectory!=null && !defaultDirectory.endsWith(File.separator) && !defaultDirectory.endsWith("/"))
+			defaultDirectory = defaultDirectory + File.separator;
 	}
 	
 	/** Returns the path to the directory that contains the last file

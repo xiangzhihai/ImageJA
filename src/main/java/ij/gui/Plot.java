@@ -3,6 +3,7 @@ import java.awt.*;
 import java.util.*;
 import java.io.*;
 import java.lang.reflect.Method;
+import java.awt.geom.Point2D;
 import ij.*;
 import ij.process.*;
 import ij.util.*;
@@ -21,7 +22,7 @@ import ij.measure.ResultsTable;
  *
  * @author Wayne Rasband
  * @author Philippe CARL, CNRS, philippe.carl (AT) unistra.fr (log axes, arrows, ArrayList data)
- * @author Norbert Vischer (overlay range arrows, 'R'eset range, filled plots, dynamic plots, boxes and whiskers, superscript)
+ * @author Norbert Vischer (overlay range arrows, 'R'eset range, filled plots, dynamic plots, boxes and whiskers)
  * @author Michael Schmid (axis grid/ticks, resizing/panning/changing range, high-resolution, serialization)
  */
 public class Plot implements Cloneable {
@@ -33,7 +34,7 @@ public class Plot implements Cloneable {
 	//These are saved in the flags of the PlotObject class; thus bits up to 0x0f are reserved
 	public static final int TOP_LEFT=0x90, TOP_RIGHT=0xA0, BOTTOM_LEFT=0xB0, BOTTOM_RIGHT=0xC0, AUTO_POSITION=0x80;
 	/** Masks out bits for legend positions; if all these bits are off, the legend is turned off */
-	static final int LEGEND_POSITION_MASK = 0xf0;
+	private static final int LEGEND_POSITION_MASK = 0xf0;
 	/** Legend has its curves in bottom-to-top sequence (otherwise top to bottom) */
 	public static final int LEGEND_BOTTOM_UP = 0x100;
 	/** Legend erases background (otherwise transparent) */
@@ -126,8 +127,6 @@ public class Plot implements Cloneable {
 	public static final int COPY_AXIS_STYLE = 0x80;
 	/** Flag for copying from a template: copy contents style */
 	public static final int COPY_CONTENTS_STYLE = 0x100;
-	/** Flag for copying PlotObjects (curves...) from a template if the template has more PlotObjects than the Plot to copy to. */
-	public static final int COPY_EXTRA_OBJECTS = 0x200;
 
 	/** The default margin width left of the plot frame (enough for 5-digit numbers such as unscaled 16-bit
 	 *	@deprecated Not a fixed value any more, use getDrawingFrame() to get the drawing area */
@@ -158,12 +157,13 @@ public class Plot implements Cloneable {
 	private static final double RELATIVE_ARROWHEAD_SIZE = 0.2; //arrow heads have 1/5 of vector length
 	private static final int MIN_ARROWHEAD_LENGTH = 3;
 	private static final int MAX_ARROWHEAD_LENGTH = 20;
+	private static Font	 DEFAULT_FONT = FontUtil.getFont("Arial", Font.PLAIN, PlotWindow.fontSize);
 
 	PlotProperties pp = new PlotProperties();		//size, range, formatting etc, for easy serialization
-	PlotProperties ppSnapshot;						//copy for reverting
 	Vector<PlotObject> allPlotObjects = new Vector<PlotObject>();	//all curves, labels etc., also serialized for saving/reading
 	Vector<PlotObject> allPlotObjectsSnapshot;      //copy for reverting
 	private PlotVirtualStack stack;
+	private boolean grayscaleStack;
 	/** For high-resolution plots, everything will be scaled with this number. Otherwise, must be 1.0.
 	 *  (creating margins, saving PlotProperties etc only supports scale=1.0) */
 	float scale = 1.0f;
@@ -180,12 +180,12 @@ public class Plot implements Cloneable {
 	double[] currentMinMax = new double[]{Double.NaN, 0, Double.NaN, 0}; //current plot range, xMin, xMax, yMin, yMax (values, not logarithm if log axis)
 	double[] defaultMinMax = new double[]{Double.NaN, 0, Double.NaN, 0}; //default plot range
 	double[] savedMinMax = new double[]{Double.NaN, 0, Double.NaN, 0};	//keeps previous range for revert
-	int[] enlargeRange;								//whether to enlarge the range slightly to avoid values at the axes (0=off, USUALLY_ENLARGE, ALWAYS_ENLARGE)
+	int[] enlargeRange;								//whether to enlarge the range slightly to avoid values at the border (0=off, USUALLY_ENLARGE, ALWAYS_ENLARGE)
 	boolean logXAxis, logYAxis;						//whether to really use log axis (never for small relative range)
-	//for passing on what should be kept when 'live' plotting (PlotMaker), but note that 'COPY_EXTRA_OBJECTS' is also on for live plotting:
-	int templateFlags = COPY_SIZE | COPY_LABELS | COPY_AXIS_STYLE | COPY_CONTENTS_STYLE | COPY_LEGEND;
-	private int dsize = PlotWindow.getDefaultFontSize();
-	Font defaultFont = FontUtil.getFont("Arial",Font.PLAIN,dsize); //default font for labels, axis, etc.
+
+	int templateFlags = COPY_SIZE | COPY_LABELS | COPY_AXIS_STYLE | COPY_CONTENTS_STYLE | COPY_LEGEND;	//for passing on what should be kept when 'live' plotting (PlotMaker)
+
+	Font defaultFont = DEFAULT_FONT;				//default font for labels, axis, etc.
 	Font currentFont = defaultFont;					//font as changed by setFont or setFontSize, must never be null
 	private double xScale, yScale;					//pixels per data unit
 	private int xBasePxl, yBasePxl;					//pixel coordinates corresponding to 0
@@ -207,6 +207,9 @@ public class Plot implements Cloneable {
 	//private boolean snapToMinorGrid;  			// snap to grid when zooming to selection
 	private static double SEPARATED_BAR_WIDTH=0.5;  // for plots with separate bars (e.g. categories), fraction of space, 0.1-1.0
 	double[] steps;                                 //for redrawing the grid
+	private int objectToReplace = -1;
+	private Point2D.Double textLoc;
+	private int textIndex;
 
 	/** Constructs a new Plot with the default options.
 	 * Use add(shape,xvalues,yvalues) to add curves.
@@ -269,6 +272,15 @@ public class Plot implements Cloneable {
 		pp = (PlotProperties)in.readObject();
 		allPlotObjects = (Vector<PlotObject>)in.readObject();
 		in.close();
+		if (pp.xLabel.type==8) {
+			pp.xLabel.updateType();	//convert old (pre-1.52i) type codes for the PlotObjects
+			pp.yLabel.updateType();
+			pp.frame.updateType();
+			if (pp.legend != null) pp.legend.updateType();
+			for (PlotObject plotObject : allPlotObjects)
+				plotObject.updateType();
+		}
+
 		defaultMinMax = pp.rangeMinMax;
 		currentFont = nonNullFont(pp.frame.getFont(), currentFont); // best guess in case we want to add a legend
 		getProcessor();     //prepares scale, calibration etc, but does not plot it yet
@@ -342,119 +354,64 @@ public class Plot implements Cloneable {
 		return imp == null ? title : imp.getTitle();
 	}
 
-	/** Sets the x-axis and y-axis range. Saves the new limits as default (so the 'R' field sets the limits to these).
-	 *  Updates the image if existing.
-	 *  Accepts NaN values to indicate auto-range. */
+	/** Sets the x-axis and y-axis range. Updates the image if existing.
+	 *  Accepts NaN values to indicate auto-range.
+	 */
 	public void setLimits(double xMin, double xMax, double yMin, double yMax) {
-		setLimitsNoUpdate(xMin, xMax, yMin, yMax);
-		makeLimitsDefault();
-		ignoreForce2Grid = true;
-		if (plotDrawn)
-			setLimitsToDefaults(true);
-	}
 
-	/** Sets the x-axis and y-axis range. Accepts NaN values to indicate auto range.
-	 *  Does not update the image and leaves the default limits (for reset via the 'R' field) untouched. */
-	void setLimitsNoUpdate(double xMin, double xMax, double yMin, double yMax) {
 		boolean containsNaN = (Double.isNaN(xMin + xMax + yMin + yMax));
-		if (containsNaN && allPlotObjects.isEmpty())//can't apply auto-range without data
+		if (containsNaN && getNumPlotObjects(PlotObject.XY_DATA|PlotObject.ARROWS, false)==0)//can't apply auto-range without data
 			return;
-		boolean[] auto = new boolean[4];
 		double[] range = {xMin, xMax, yMin, yMax};
-		if (containsNaN) {
+		if (containsNaN) {                          //auto range for at least one limit
 			double[] extrema = getMinAndMax(true, ALL_AXES_RANGE);
-
-			for (int jj = 0; jj < 4; jj++)
-				if (Double.isNaN(range[jj])) {
-					range[jj] = extrema[jj];
-					auto[jj] = true;
+			boolean[] auto = new boolean[range.length];
+			for (int i = 0; i < range.length; i++)
+				if (Double.isNaN(range[i])) {
+					auto[i] = true;
+					range[i] = extrema[i];
 				}
-			double left = range[0];
-			double right = range[1];
-			double bottom = range[2];
-			double top = range[3];
-
-			//set semi-auto to full-auto if it would result in reverse axis direction
-			if ((auto[0] || auto[1]) && (left >= right)) {
-				left = extrema[0];
-				right = extrema[1];
-				auto[0] = true;
-				auto[1] = true;
+			for (int a = 0; a<range.length; a+=2) { //for all axes (0 for x, 2 for y): would semi-auto reverse the axis?
+				if (auto[a] == auto[a+1]) continue; //ignore if not semi-auto
+				boolean currentAxisReverse = defaultMinMax[a+1] < defaultMinMax[a];
+				if ((!currentAxisReverse && range[a+1] <= range[a]) || (currentAxisReverse && range[a] <= range[a+1])) {
+					auto[a] = true;					//semi-auto to full-auto
+					auto[a+1] = true;
+					range[a] = extrema[a];
+					range[a+1] = extrema[a+1];
+				}
 			}
-<<<<<<< HEAD
-<<<<<<< HEAD
 			for (int i = 0; i < range.length; i++)
 				if (!auto[i])       // don't modify for limits that were set manually
 					enlargeRange[i] = 0;
 			enlargeRange(range);    // for automatic limits, avoid points exactly at the border
 		}
-		System.arraycopy(range, 0, currentMinMax, 0, Math.min(range.length, currentMinMax.length));
-=======
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-			if ((auto[2] || auto[3]) && (bottom >= top)) {
-				bottom = extrema[2];
-				top = extrema[3];
-				auto[2] = true;
-				auto[3] = true;
-			}
-			//Add 3% extra space to automatic borders
-			double extraXLin = (right - left) * 0.03;
-			double extraYLin = (top - bottom) * 0.03;
-			double extraXLog = (Math.log(right) - Math.log(left)) * 0.03;
-			double extraYLog = (Math.log(top) - Math.log(bottom)) * 0.03;
-
-			boolean isLogX = hasFlag(X_LOG_NUMBERS);
-			boolean isLogY = hasFlag(Y_LOG_NUMBERS);
-
-			if (auto[0] && !isLogX)
-				range[0] = left - extraXLin;//extra space (linear)
-			if (auto[1] && !isLogX)
-				range[1] = right + extraXLin;
-			if (auto[2] && !isLogY)
-				range[2] = bottom - extraYLin;
-			if (auto[3] && !isLogY)
-				range[3] = top + extraYLin;
-
-			if (auto[0] && isLogX)
-				range[0] = Math.exp(Math.log(left) - extraXLog);//extra space (log)
-			if (auto[1] && isLogX)
-				range[1] = Math.exp(Math.log(right) + extraXLog);
-			if (auto[2] && isLogY)
-				range[2] = Math.exp(Math.log(bottom) - extraYLog);
-			if (auto[3] && isLogY)
-				range[3] = Math.exp(Math.log(top) + extraYLog);
-		}
-		defaultMinMax = range;//change pointer of defaultMinMax
-		enlargeRange = null;
-<<<<<<< HEAD
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+		defaultMinMax = range;      // take the new values as default: change pointer of defaultMinMax
 		ignoreForce2Grid = true;
-	}
-
-	/** Takes over the current limits as the default ones (i.e., the limits set by clicking at the 'R' field in the bottom-left corner) */
-	void makeLimitsDefault() {
-		System.arraycopy(currentMinMax, 0, defaultMinMax, 0, Math.min(currentMinMax.length, defaultMinMax.length));
+		if (plotDrawn)
+			setLimitsToDefaults(true);
 	}
 
 	/** Returns the current limits as an array xMin, xMax, yMin, yMax.
+	 *  (note that ImageJ versions before to 1.52i have returned incorrect values in case of log axes)
 	 *	Note that future versions might return a longer array (e.g. for y2 axis limits) */
 	public double[] getLimits() {
-		return new double[] {xMin, xMax, yMin, yMax};
+		return currentMinMax.clone();//new double[] {xMin, xMax, yMin, yMax};
+	}
+
+	/** Sets the current limits from an array xMin, xMax, yMin, yMax
+	 *  The array may be also longer or shorter, but should not contain NaN values.
+	 *  Does not update the plot, does not save the old limits. */
+	public void setLimits(double[] limits) {
+		System.arraycopy(limits, 0, currentMinMax, 0, Math.min(limits.length, defaultMinMax.length));
 	}
 
 	/** Sets the canvas size in (unscaled) pixels and sets the scale to 1.0.
 	 * If the scale remains 1.0, this will be the size of the resulting ImageProcessor.
-	 * When not called, the canvas size is adjusted for the plot size specified
-	 * by setFrameSize() or setWindowSize(), or otherwise in Edit>Options>Plots.
-	 * @see #setFrameSize(int,int)
-	 * @see #setWindowSize(int,int)
-	*/
+	 * When not called, the canvas size is adjusted for the plot frame size specified
+	 * by setFrameSize or otherwise in Edit>Options>Plots. */
 	public void setSize(int width, int height) {
-		if (ip != null && width == ip.getWidth() && height == ip.getHeight())
-			return;
+		if (ip != null && width == ip.getWidth() && height == ip.getHeight()) return;
 		Dimension minSize = getMinimumSize();
 		pp.width = Math.max(width, minSize.width);
 		pp.height = Math.max(height, minSize.height);
@@ -475,9 +432,7 @@ public class Plot implements Cloneable {
 	 *	This frame size in pixels divided by the data range defines the image scale.
 	 *	This method does not check for the minimum size MIN_FRAMEWIDTH, MIN_FRAMEHEIGHT.
 	 *	Note that the black frame will have an outer size that is one pixel larger
-	 *	(when plotted with a linewidth of one pixel).
-	 * @see #setWindowSize(int,int)
-	*/
+	 *	(when plotted with a linewidth of one pixel). */
 	public void setFrameSize(int width, int height) {
 		if (pp.width <= 0) {                //plot not drawn yet? Just remember as preferred size
 			preferredPlotWidth = width;
@@ -491,38 +446,6 @@ public class Plot implements Cloneable {
 		}
 	}
 
-	/** Sets the plot window size in pixels.
-	 * @see #setFrameSize(int,int)
-	*/
-	public void setWindowSize(int width, int height) {
-		scale = 1.0f;
-		makeMarginValues();
-		int titleBarHeight = 22;
-		int infoHeight = 11;
-		double scale = Prefs.getGuiScale();
-		if (scale>1.0)
-			infoHeight = (int)(infoHeight*scale);
-		int buttonPanelHeight = 45;
-		if (pp.width <= 0) {     //plot not drawn yet? 
-			int extraWidth = leftMargin+rightMargin+ImageWindow.HGAP*2;
-			int extraHeight = topMargin+bottomMargin+titleBarHeight+infoHeight+buttonPanelHeight;
-			if (extraWidth<width)
-				width -= extraWidth;
-			if (extraHeight<height)	
-				height -= extraHeight;
-			preferredPlotWidth = width;
-			preferredPlotHeight = height;
-		} else {
-			int extraWidth = ImageWindow.HGAP*2;
-			int extraHeight = titleBarHeight+infoHeight+buttonPanelHeight;
-			if (extraWidth<width)
-				width -= extraWidth;
-			if (extraHeight<height)	
-				height -= extraHeight;
-			setSize(width, height);
-		}
-	}
-
 	/** The minimum plot size including borders, in pixels (at scale=1) */
 	public Dimension getMinimumSize() {
 		return new Dimension(MIN_FRAMEWIDTH + leftMargin + rightMargin,
@@ -530,14 +453,15 @@ public class Plot implements Cloneable {
 	}
 
 	/** Adjusts the format with another plot as a template, using the current
-	 *  (usually default) templateFlags of this plot.
+	 *  (usually default) flags of this plot. Used for keeping the style during
+	 *  'Live' plotting (PlotMaker).
 	 *  <code>plot</code> may be null; then the call has no effect. */
 	public void useTemplate(Plot plot) {
 		useTemplate(plot, templateFlags);
 	}
 
 	/** Adjusts the format (style) with another plot as a template. Flags determine what to
-	 *	copy from the template; these can be X_RANGE, Y_RANGE, COPY_SIZE, COPY_LABELS, COPY_AXIS_STYLE,
+	 *	copy from the template; these can be COPY_SIZE, COPY_LABELS, COPY_AXIS_STYLE,
 	 *  COPY_CONTENTS_STYLE (hidden items are ignored), and COPY_LEGEND.
 	 *	<code>plot</code> may be null; then the call has no effect. */
 	public void useTemplate(Plot plot, int templateFlags) {
@@ -545,10 +469,11 @@ public class Plot implements Cloneable {
 		this.defaultFont = plot.defaultFont;
 		this.currentFont = plot.currentFont;
 		this.currentLineWidth = plot.currentLineWidth;
+		this.pp.frame = plot.pp.frame.clone();
 		this.currentColor = plot.currentColor;
 		if ((templateFlags & COPY_AXIS_STYLE) != 0) {
 			this.pp.axisFlags = plot.pp.axisFlags;
-			this.pp.frame = plot.pp.frame.deepClone();
+			this.pp.frame = plot.pp.frame.clone();
 		}
 		if ((templateFlags & COPY_LABELS) != 0) {
 			this.pp.xLabel.label = plot.pp.xLabel.label;
@@ -562,9 +487,9 @@ public class Plot implements Cloneable {
 				if (!plotDrawn) defaultMinMax[i] = plot.currentMinMax[i];
 			}
 		if ((templateFlags & COPY_LEGEND) != 0 && plot.pp.legend != null)
-			this.pp.legend = plot.pp.legend.deepClone();
+			this.pp.legend = plot.pp.legend.clone();
 		if ((templateFlags & (COPY_LEGEND | COPY_CONTENTS_STYLE)) != 0) {
-			int plotPObjectIndex = 0;  //points to PlotObjects of the templatePlot
+			int plotPObjectIndex = 0;
 			int plotPObjectsSize = plot.allPlotObjects.size();
 			for (PlotObject plotObject : allPlotObjects) {
 				if (plotObject.type == PlotObject.XY_DATA && !plotObject.hasFlag(PlotObject.HIDDEN)) {
@@ -577,16 +502,11 @@ public class Plot implements Cloneable {
 						plotObject.label = plot.allPlotObjects.get(plotPObjectIndex).label;
 					if ((templateFlags & COPY_CONTENTS_STYLE) != 0)
 						setPlotObjectStyle(plotObject, getPlotObjectStyle(plot.allPlotObjects.get(plotPObjectIndex)));
-					plotPObjectIndex++;
 				}
 			}
 		}
 		if ((templateFlags & COPY_SIZE) != 0)
 			setSize(plot.pp.width, plot.pp.height);
-
-		if ((templateFlags & COPY_EXTRA_OBJECTS) != 0)
-			for (int p = allPlotObjects.size(); p < plot.allPlotObjects.size(); p++)
-				allPlotObjects.add(plot.allPlotObjects.get(p));
 		this.templateFlags = templateFlags;
 	}
 
@@ -608,20 +528,20 @@ public class Plot implements Cloneable {
 	 *  If a label has the form {txt1,txt2,txt3}, the corresponding axis will be labeled
 	 *  not by numbers but rather with the texts "txt1", "txt2" ... instead of 0, 1, ...
 	 *  In this special case, there will be no label for the axis on the plot.
-	 *	Call update() thereafter to make the change visible (if it is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if it is shown already). */
 	public void setXYLabels(String xLabel, String yLabel) {
 		pp.xLabel.label = xLabel!=null ? xLabel : "";
 		pp.yLabel.label = yLabel!=null ? yLabel : "";
 	}
 
 	/** Sets the maximum number of intervals in a plot.
-	 *	Call update() thereafter to make the change visible (if the image is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if the image is shown already). */
 	public void setMaxIntervals(int intervals) {
 			maxIntervals = intervals;
 	}
 
 	/** Sets the length of the major tick in pixels.
-	 *	Call update() thereafter to make the change visible (if the image is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if the image is shown already). */
 	public void setTickLength(int tickLength) {
 			tickLength = tickLength;
 	}
@@ -633,7 +553,7 @@ public class Plot implements Cloneable {
 
 	/** Sets the flags that control the axes format.
 	 *	Does not modify the flags for logarithmic axes on/off and the FORCE2GRID flags.
-	 *	Call update() thereafter to make the change visible (if it is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if it is shown already). */
 	public void setFormatFlags(int flags) {
 		int unchangedFlags = X_LOG_NUMBERS | Y_LOG_NUMBERS | X_FORCE2GRID | Y_FORCE2GRID;
 		flags = flags & (~unchangedFlags);	  //remove flags that should not be affected
@@ -646,32 +566,32 @@ public class Plot implements Cloneable {
 	}
 
 	/** Sets the X Axis format to Log or Linear.
-	 *	Call update() thereafter to make the change visible (if it is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if it is shown already). */
 	public void setAxisXLog(boolean axisXLog) {
 		pp.axisFlags = axisXLog ? pp.axisFlags | X_LOG_NUMBERS : pp.axisFlags & (~X_LOG_NUMBERS);
 	}
 
 	/** Sets the Y Axis format to Log or Linear.
-	 *	Call update() thereafter to make the change visible (if it is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if it is shown already). */
 	public void setAxisYLog(boolean axisYLog) {
 		pp.axisFlags = axisYLog ? pp.axisFlags | Y_LOG_NUMBERS : pp.axisFlags & (~Y_LOG_NUMBERS);
 	}
 
 	/** Sets whether to show major ticks at the x axis.
-	 *	Call update() thereafter to make the change visible (if the image is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if the image is shown already). */
 
 	public void setXTicks(boolean xTicks) {
 		pp.axisFlags = xTicks ? pp.axisFlags | X_TICKS : pp.axisFlags & (~X_TICKS);
 	}
 
 	/** Sets whether to show major ticks at the y axis.
-	 *	Call update() thereafter to make the change visible (if the image is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if the image is shown already). */
 	public void setYTicks(boolean yTicks) {
 		pp.axisFlags = yTicks ? pp.axisFlags | Y_TICKS : pp.axisFlags & (~Y_TICKS);
 	}
 
 	/** Sets whether to show minor ticks on the x axis (if linear). Also sets major ticks if true and no grid is set.
-	 *	Call update() thereafter to make the change visible (if the image is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if the image is shown already). */
 	public void setXMinorTicks(boolean xMinorTicks) {
 		pp.axisFlags = xMinorTicks ? pp.axisFlags | X_MINOR_TICKS : pp.axisFlags & (~X_MINOR_TICKS);
 		if (xMinorTicks && !hasFlag(X_GRID))
@@ -679,14 +599,14 @@ public class Plot implements Cloneable {
 	}
 
 	/** Sets whether to show minor ticks on the y axis (if linear). Also sets major ticks if true and no grid is set.
-	 *	Call update() thereafter to make the change visible (if the image is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if the image is shown already). */
 	public void setYMinorTicks(boolean yMinorTicks) {
 		pp.axisFlags = yMinorTicks ? pp.axisFlags | Y_MINOR_TICKS : pp.axisFlags & (~Y_MINOR_TICKS);
 		if (yMinorTicks && !hasFlag(Y_GRID))
 			pp.axisFlags |= Y_TICKS;
 	}
 
-	/** Sets the properties of the axes. Call update() thereafter to make the change visible
+	/** Sets the properties of the axes. Call updateImage() thereafter to make the change visible
 	 *	(if the image is shown already). */
 	public void setAxes(boolean xLog, boolean yLog, boolean xTicks, boolean yTicks, boolean xMinorTicks, boolean yMinorTicks,
 			int tickLenght, int minorTickLenght) {
@@ -700,7 +620,7 @@ public class Plot implements Cloneable {
 		setMinorTickLength(minorTickLenght);
 	}
 
-	/** Sets log scale in x. Call update() thereafter to make the change visible
+	/** Sets log scale in x. Call updateImage() thereafter to make the change visible
 	 *	(if the image is shown already). */
 
 	public void setLogScaleX() {
@@ -722,7 +642,7 @@ public class Plot implements Cloneable {
 	}
 
 	/** Adds a curve or set of points to this plot, where 'type' is
-	 * "line", "connected circle", "filled", "bar", "separated bar", "circle", "box", "triangle", "diamond", "cross", 
+	 * "line", "connected circle", "filled", "bar", "separated bar", "circle", "box", "triangle", "diamond", "cross",
 	 * "x" or "dot". Run <i>Help&gt;Examples&gt;JavaScript&gt;Graph Types</i> to see examples.
 	 * If 'type' is in the form "code: <macroCode>", the macro given is executed to draw the symbol;
 	 * macro variables 'x' and 'y' are the pixel coordinates of the point, 'xval' and 'yval' are the plot data
@@ -734,6 +654,15 @@ public class Plot implements Cloneable {
 	public void add(String type, double[] xvalues, double[] yvalues) {
 		int iShape = toShape(type);
 		addPoints(Tools.toFloat(xvalues), Tools.toFloat(yvalues), null, iShape, iShape==CUSTOM?type.substring(5, type.length()):null);
+	}
+
+	/** Replaces the specified plot object (curve or set of points).
+		 Equivalent to add() if there are no plot objects. */
+	public void replace(int index, String type, double[] xvalues, double[] yvalues) {
+		if (index>=0 && index<allPlotObjects.size()) {
+			objectToReplace = allPlotObjects.size()>0?index:-1;
+			add(type, xvalues, yvalues);
+		}
 	}
 
 	/** Adds a curve, set of points or error bars to this plot, where 'type' is
@@ -763,7 +692,11 @@ public class Plot implements Cloneable {
 			for (int i=0; i<yValues.length; i++)
 				xValues[i] = i;
 		}
-		allPlotObjects.add(new PlotObject(xValues, yValues, yErrorBars, shape, currentLineWidth, currentColor, currentColor2, label));
+		if (objectToReplace>=0)
+			allPlotObjects.set(objectToReplace, new PlotObject(xValues, yValues, yErrorBars, shape, currentLineWidth, currentColor, currentColor2, label));
+		else
+			allPlotObjects.add(new PlotObject(xValues, yValues, yErrorBars, shape, currentLineWidth, currentColor, currentColor2, label));
+		objectToReplace = -1;
 		if (plotDrawn) updateImage();
 	}
 
@@ -910,7 +843,13 @@ public class Plot implements Cloneable {
 	 * is the upper left corner of the the plot frame and (1,1) is
 	 * the lower right corner. Uses the justification specified by setJustification(). */
 	public void addLabel(double x, double y, String label) {
-		allPlotObjects.add(new PlotObject(label, x, y, currentJustification, currentFont, currentColor, PlotObject.NORMALIZED_LABEL));
+		if (textLoc!=null && x==textLoc.getX() && y==textLoc.getY())
+			allPlotObjects.set(textIndex, new PlotObject(label, x, y, currentJustification, currentFont, currentColor, PlotObject.NORMALIZED_LABEL));
+		else {
+			allPlotObjects.add(new PlotObject(label, x, y, currentJustification, currentFont, currentColor, PlotObject.NORMALIZED_LABEL));
+			textLoc = new Point2D.Double(x,y);
+			textIndex = allPlotObjects.size()-1;
+		}
 	}
 
 	/* Draws text at the specified location, using the coordinate system defined
@@ -933,28 +872,26 @@ public class Plot implements Cloneable {
 		Hidden data sets are ignored.
 		If 'labels' is null or empty, the labels of the data set previously (if any) are used.
 		To modify the legend's style, call 'setFont' and 'setLineWidth' before 'addLegend'. */
-		public void addLegend(String labels, String options) {
-			int flags = 0;
-			if (options!=null) {
-				options = options.toLowerCase();
-				if (options.contains("top-left"))
-					flags |= Plot.TOP_LEFT;
-				else if (options.contains("top-right"))
-					flags |= Plot.TOP_RIGHT;
-				else if (options.contains("bottom-left"))
-					flags |= Plot.BOTTOM_LEFT;
-				else if (options.contains("bottom-right"))
-					flags |= Plot.BOTTOM_RIGHT;
-				else if (!options.contains("off") && !options.contains("no"))
-					flags |= Plot.AUTO_POSITION;
-				if (options.contains("bottom-to-top"))
-					flags |= Plot.LEGEND_BOTTOM_UP;
-				if (options.contains("transparent"))
-					flags |= Plot.LEGEND_TRANSPARENT;
-			}
-			setLegend(labels, flags);
+	public void addLegend(String labels, String options) {
+		int flags = Plot.AUTO_POSITION;
+		if (options!=null) {
+			options = options.toLowerCase();
+			if (options.contains("top-left"))
+				flags |= Plot.TOP_LEFT;
+			else if (options.contains("top-right"))
+				flags |= Plot.TOP_RIGHT;
+			else if (options.contains("bottom-left"))
+				flags |= Plot.BOTTOM_LEFT;
+			else if (options.contains("bottom-right"))
+				flags |= Plot.BOTTOM_RIGHT;
+			if (options.contains("bottom-to-top"))
+				flags |= Plot.LEGEND_BOTTOM_UP;
+			if (options.contains("transparent"))
+				flags |= Plot.LEGEND_TRANSPARENT;
 		}
-	
+		setLegend(labels, flags);
+	}
+
 	/** Adds a legend. The legend will be always drawn last (on top of everything).
 	 *	To modify the legend's style, call 'setFont' and 'setLineWidth' before 'addLegend'
 	 *	@param labels labels of the points or curves in the sequence of the data were added, tab-delimited or linefeed-delimited.
@@ -979,29 +916,12 @@ public class Plot implements Cloneable {
 				currentFont, currentColor == null ? Color.black : currentColor, flags);
 		if (plotDrawn) updateImage();
 	}
-<<<<<<< HEAD
-<<<<<<< HEAD
 
-	/** Sets the label for the plot object nuber 'index' in the sequence they were added.
-	 *  With index=-1, sets the label for the last object added.
-	 *  For x/y data, the label is used for the legend and as header in getResultsTableWithLabels.
-	 *  For Text/Label objects, it affects the label shown (but the plot is not redisplayed). */
-	public void setLabel(int index, String label) {
-		if (index < 0) index = allPlotObjects.size() + index;
-		allPlotObjects.get(index).label = label;
-	}
-
-=======
-	
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-=======
-	
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	/** Returns an array of the available curve types ("Line", "Bar", "Circle", etc). */
 	public String[] getTypes() {
 		return SORTED_SHAPES;
 	}
-		
+
 	/** Sets the justification used by addLabel(), where <code>justification</code>
 	 * is Plot.LEFT, Plot.CENTER or Plot.RIGHT. Default is LEFT. */
 	public void setJustification(int justification) {
@@ -1076,15 +996,10 @@ public class Plot implements Cloneable {
 		allPlotObjects.add(new PlotObject(x1, y1, x2, y2, currentLineWidth, step, currentColor, PlotObject.DOTTED_LINE));
 	}
 
-	/** Sets the font size for all following addLabel() etc. operations. */
-	public void setFontSize(int size) {
-		setFont(-1, (float)size);
-	}
-
-	/** Sets the font for all following addLabel() etc. operations. The currently set font when
+	/** Sets the font for all following drawLabel etc. operations. The currently set font when
 	 *	displaying the plot determines the font of all labels & numbers.
 	 *  After the plot has been shown, sets the font for the numbers and the legend (if present).
-	 *	Call update() thereafter to make the change visible (if the image is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if the image is shown already). */
 	public void setFont(Font font) {
 		if (font == null) font = defaultFont;
 		currentFont = font;
@@ -1095,7 +1010,7 @@ public class Plot implements Cloneable {
 		}
 	}
 
-	/** Sets the font size and style for all following addLabel() etc. operations. This leaves
+	/** Sets the font size and style for all following drawLabel etc. operations. This leaves
 	 *	the font name and style of the previously used fonts unchanged. The currently set font
 	 *	when displaying the plot determines the font of the numbers at the axes.
 	 *	That font also sets the default label font size, which may be overridden by
@@ -1103,19 +1018,19 @@ public class Plot implements Cloneable {
 	 *  After the plot has been shown, sets the font for the numbers and the legend (if present).
 	 *	Styles are defined in the Font class, e.g. Font.PLAIN, Font.BOLD.
 	 *	Set <code>style</code> to -1 to leave the style unchanged.
-	 *	Call update() thereafter to make the change visible (if the image is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if the image is shown already). */
 	public void setFont(int style, float size) {
 		if (size < 9) size = 9f;
-		if (size > 36) size = 36f;
+		if (size > 24) size = 24f;
 		Font previousFont = nonNullFont(pp.frame.getFont(), currentFont);
 		if (style < 0) style = previousFont.getStyle();
 		setFont(previousFont.deriveFont(style, size));
 	}
 
-	/** Sets the x and y label font size and style. Styles are defined
+	/** Sets the size of the x and y label font size and style. Styles are defined
 	 *	in the Font class, e.g. Font.PLAIN, Font.BOLD.
 	 *	Set <code>style</code> to -1 to leave the style unchanged.
-	 *	Call update() thereafter to make the change visible (if the image is shown already). */
+	 *	Call updateImage() thereafter to make the change visible (if the image is shown already). */
 	public void setAxisLabelFont(int style, float size) {
 		if (size < 9) size = 9f;
 		if (size > 33) size = 33f;
@@ -1125,7 +1040,7 @@ public class Plot implements Cloneable {
 		setYLabelFont(pp.xLabel.getFont().deriveFont(style < 0 ? pp.yLabel.getFont().getStyle() : style, size));
 	}
 
-	/** Sets the xLabelFont; must not be null. If this method is not used, the last setFont
+	/** Sets the xLabelFont; must not be mull. If this method is not used, the last setFont
 	 *	of setFontSize call before displaying the plot determines the font, or if neither
 	 *	was called, the font size of the Plot Options is used. */
 	public void setXLabelFont(Font font) {
@@ -1169,16 +1084,6 @@ public class Plot implements Cloneable {
 			return null;
 	}
 
-	/** Gets the flags of the xLabel ('x'), yLabel('y') or the legend ('l').
-	 *	Returns -1 if the given PlotObject does not exist */
-	public int getObjectFlags(char c) {
-		PlotObject plotObject = pp.getPlotObject(c);
-		if (plotObject != null)
-			return plotObject.flags;
-		else
-			return -1;
-	}
-
 	/** Get the x coordinates of the data set passed with the constructor (if not null)
 	 *	or otherwise of the data set of the first 'addPoints'. Returns null if neither exists */
 	public float[] getXValues() {
@@ -1193,15 +1098,12 @@ public class Plot implements Cloneable {
 		return p==null ? null : p.yValues;
 	}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 	/** Get the data of the n-th Plot Object containing xy data in the sequence they were added
 	 *  (Other Plot Objects such as labels, arrows, lines, shapes and hidden PlotObjects are not counted).
 	 *	The array returned has elements [0] x data, [1] y data, [2] x error bars, [3] y error bars.
 	 *  If no error bars are given, the corresponding arrays are null.
 	 *  Returns null if there is no Plot Object with xy data with this index.
-	 *  @see #getDataObjectDesignations()
-	**/
+	 *  @see #getDataObjectDesignations() **/
 	public float[][] getDataObjectArrays(int index) {
 		int i = 0;
 		for (PlotObject plotObject : allPlotObjects) {
@@ -1215,22 +1117,45 @@ public class Plot implements Cloneable {
 
 	/** Gets an array with human-readable designations of the PlotObjects (curves, labels, ...)
 	 *	in the sequence they were added (the object passed with the constructor is first,
-=======
-	/** Get an array with human-readable designations of the PlotObjects (curves, labels, ...)
-	 *	in the sequence they were added (the object passed with the constructur is first,
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-=======
-	/** Get an array with human-readable designations of the PlotObjects (curves, labels, ...)
-	 *	in the sequence they were added (the object passed with the constructur is first,
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	 *	even though it is plotted last). Hidden PlotObjects are included. **/
 	public String[] getPlotObjectDesignations() {
-		String[] names = new String[allPlotObjects.size()];
+		return getPlotObjectDesignations(-1, true);
+	}
+
+	/** Gets an array with human-readable designations of the PlotObjects containing xy data
+	 *	in the sequence they were added. Other Plot Objects such as labels, arrows, lines,
+	 *  shapes and hidden PlotObjects are not counted.
+	 *  (the object passed with the constructor is first, even though it is plotted last). */
+	public String[] getDataObjectDesignations() {
+		return getPlotObjectDesignations(PlotObject.XY_DATA, false);
+	}
+
+	/** Returns the number of PlotObjects (curves, labels, ...) passed with the constructor or added by 'add' or 'draw' methods.
+	 *  Legend, frame and axes (though internally PlotObjects) are not included */
+	public int getNumPlotObjects() {
+		return allPlotObjects.size();
+	}
+
+	/** Returns the number of PlotObjects fitting the mask.
+	 *  Legend, frame and axes (though internally PlotObjects) are not included */
+	int getNumPlotObjects(int mask, boolean includeHidden) {
+		int nObjects = 0;
+		for (PlotObject plotObject : allPlotObjects)
+			if ((plotObject.type & mask) != 0 && (includeHidden || !plotObject.hasFlag(PlotObject.HIDDEN)))
+				nObjects++;
+		return nObjects;
+	}
+
+	/** Gets an array with human-readable designations of the PlotObjects with types fitting the mask */
+	String[] getPlotObjectDesignations(int mask, boolean includeHidden) {
+		int nObjects = getNumPlotObjects(mask, includeHidden);
+		String[] names = new String[nObjects];
 		if (names.length == 0) return names;
 		int iData = 1, iArrow = 1, iLine = 1, iText = 1,  iBox = 1, iShape = 1; //Human readable counters of each object type
-		for (int i=0; i<allPlotObjects.size(); i++) {
-			PlotObject plotObject = allPlotObjects.get(i);
+		int i = 0;
+		for (PlotObject plotObject : allPlotObjects) {
 			int type = plotObject.type;
+			if ((type & mask) == 0 || (!includeHidden && plotObject.hasFlag(PlotObject.HIDDEN))) continue;
 			String label = plotObject.label;
 			switch (type) {
 				case PlotObject.XY_DATA:
@@ -1264,13 +1189,14 @@ public class Plot implements Cloneable {
 					iShape++;
 					break;
 			}
+			i++;
 		}
 		return names;
 	}
 
 	/** Add the i-th PlotObject (in the sequence how they were added, including hidden ones)
 	 *  from another plot to this one.
-	 *  Use 'update' to update the plot thereafter.
+	 *  Use 'updateImage' to update the plot thereafter.
 	 *  @return Index of the plotObject added in the sequence they were added **/
 	public int addObjectFromPlot(Plot plot, int i) {
 		PlotObject plotObject = plot.getPlotObjectDeepClone(i);
@@ -1309,11 +1235,18 @@ public class Plot implements Cloneable {
 		allPlotObjects.get(i).label = label;
 	}
 
-	/** Set the style of the i-th PlotObject (curve, label, ...) in the sequence
-	 *	they were added (including hidden ones), from a String with comma delimiters:
-	 *	Main Color, Secondary Color (or "none"), Line Width [, Symbol shape for XY_DATA] [,hidden] **/
+	/** Sets the style of the specified PlotObject (curve, label, etc.) from a
+	 *	comma-delimited string ("color1,color2,lineWidth[,symbol][,hidden]"),
+	 * where "color2" can be "none" and "symbol" and "hidden" are optional.
+	*/
+	public void setStyle(int index, String style) {
+		if (index<0 || index>=allPlotObjects.size())
+			throw new IllegalArgumentException("Index out of range");
+		setPlotObjectStyle(allPlotObjects.get(index), style);
+	}
+
 	public void setPlotObjectStyle(int i, String styleString) {
-		setPlotObjectStyle(allPlotObjects.get(i), styleString);
+		setStyle(i, styleString);
 	}
 
 	void setPlotObjectStyle(PlotObject plotObject, String styleString) {
@@ -1336,9 +1269,35 @@ public class Plot implements Cloneable {
 		return;
 	}
 
-	/** Returns the number of PlotObjects (curves, labels, ...) passed with the constructor or added by 'add' methods */
-	public int getNumPlotObjects() {
-		return allPlotObjects.size();
+	/** Returns the index of the first plot object with x,y data (points, line) or arrows
+	 *  with all data equal to those given.  Returns or -1 is no such plot object exists.
+	 *  The array 'values' should contain the x, y, x error bar, yerror bar data. The 'values' array may have any size;
+	 *  only the data given are compared (e.g. for an array with length 2, there is no check for erro bars).
+	 *  Used when adding data from a table not to suggest the same data twice. */
+	public int getPlotObjectIndex(float[][] values) {
+		return getPlotObjectIndex(PlotObject.XY_DATA|PlotObject.ARROWS, values);
+	}
+
+	/** Returns the index of the first plot object fitting the type mask and with all data equal to those given.
+	 *  Returns or -1 is no such plot object exists.
+	 *  The array 'values' should contain the x, y, x error bar, yerror bar data. The 'values' array may have any size;
+	 *  only the data given are compared (e.g. for an array with length 2, there is no check for erro bars).
+	 *  Used when adding data from a table not to suggest the same data twice. */
+	int getPlotObjectIndex(int typeMask, float[][] values) {
+		for (int i=0; i<allPlotObjects.size(); i++) {
+			PlotObject plotObject = allPlotObjects.get(i);
+			if ((plotObject.type & typeMask) == 0) continue;
+			float[][] plotObjectArrays = plotObject.getAllDataValues();
+			boolean equal = true;
+			for (int j=0; j<Math.min(plotObjectArrays.length, values.length); j++) {
+				if (!Arrays.equals(plotObjectArrays[j], values[j])) {
+					equal = false;
+					break;
+				}
+			}
+			if (equal) return i;
+		}
+		return -1;
 	}
 
 	/** Creates a snapshot of the plot contents (not including axis formats etc),
@@ -1350,7 +1309,7 @@ public class Plot implements Cloneable {
 
 	/** Restores the plot contents (not including axis formats etc) from the snapshot
 	 *  previously created by savePlotObjects(). See also killPlotObjectsSnapshot
-	 *  Use 'update' to update the plot thereafter. */
+	 *  Use 'updateImage' to update the plot thereafter. */
 	public void restorePlotObjects() {
 		if (allPlotObjectsSnapshot != null)
 			copyPlotObjectsVector(allPlotObjectsSnapshot, allPlotObjects);
@@ -1359,26 +1318,6 @@ public class Plot implements Cloneable {
 	/** Deletes the snapshot of the plot contents to make space */
 	public void killPlotObjectsSnapshot() {
 		allPlotObjectsSnapshot = null;
-	}
-
-	/** Creates a snapshot of the plot properties (formatting, range etc., not PlotObjects such as data and corresponding curves etc.),
-	 *  for later undo by restorePlotProperties. See also killPlotPropertiesSnapshot */
-	public void savePlotPlotProperties() {
-		pp.rangeMinMax = currentMinMax;
-		ppSnapshot = pp.deepClone();
-	}
-
-	/** Restores the plot properties (formatting, range etc., not PlotObjects such as data and corresponding curves etc.)
-	 *  from a snapshot previously created by savePlotPlotProperties. See also killPlotPropertiesSnapshot.
- 	 *  Use 'update' to update the plot thereafter. */
-	public void restorePlotProperties() {
-		pp = ppSnapshot.deepClone();
-		System.arraycopy(pp.rangeMinMax, 0, currentMinMax, 0, Math.min(pp.rangeMinMax.length, currentMinMax.length));
-	}
-
-	/** Deletes the snapshot of the plot properties to make space */
-	public void killPlotPropertiesSnapshot() {
-		ppSnapshot = null;
 	}
 
 	private void copyPlotObjectsVector(Vector<PlotObject> src, Vector<PlotObject>dest) {
@@ -1391,7 +1330,6 @@ public class Plot implements Cloneable {
 		return allPlotObjects.get(i).deepClone();
 	}
 
-
 	/** Sets the plot range to the initial value determined from minima&maxima or given by setLimits.
 	 *	Updates the image if existing and updateImg is true */
 	public void setLimitsToDefaults(boolean updateImg) {
@@ -1400,12 +1338,12 @@ public class Plot implements Cloneable {
 		if (plotDrawn && updateImg) updateImage();
 	}
 
-	/** Sets the plot range to encompass all data. Updates the image if existing. */
+	/** Sets the plot range to encompass all data. Updates the image if existing and updateImg is true. */
 	public void setLimitsToFit(boolean updateImg) {
 		saveMinMax();
 		currentMinMax = getMinAndMax(true, ALL_AXES_RANGE);
-		if (Double.isNaN(defaultMinMax[0]))
-			System.arraycopy(currentMinMax, 0, defaultMinMax, 0, currentMinMax.length);
+		enlargeRange(currentMinMax);              //avoid points exactly at the border
+		//System.arraycopy(currentMinMax, 0, defaultMinMax, 0, currentMinMax.length);
 		if (plotDrawn && updateImg) updateImage();
 	}
 
@@ -1428,22 +1366,12 @@ public class Plot implements Cloneable {
 	/** Returns the plot as an ImagePlus.
 	 *	If an ImagePlus for this plot already exists, displays the plot in that ImagePlus and returns it. */
 	public ImagePlus getImagePlus() {
-		if (stack != null) {
-			if (imp != null)
-				return imp;
-			else {
-				imp = new ImagePlus(title, stack);
-				adjustCalibration(imp.getCalibration());
-				return imp;
-			}
-		}
 		if (plotDrawn)
 			updateImage();
 		else
 			draw();
 		if (imp != null) {
-			if (imp.getProcessor() != ip)
-				imp.setProcessor(ip);
+			if (imp.getProcessor() != ip) imp.setProcessor(ip);
 			return imp;
 		} else {
 			ImagePlus imp = new ImagePlus(title, ip);
@@ -1458,12 +1386,9 @@ public class Plot implements Cloneable {
 	 *	The ImagePlus is not displayed or updated unless its ImageProcessor is
 	 *  no that of the current Plot (then it gets this ImageProcessor).
 	 *  Does nothing if imp is unchanged and has the ImageProcessor of this plot.
-	 *  'imp' may be null to disconnect the plot from its ImagePlus.
-	 *	Does nothing for Plot Stacks. */
+	 *	'imp' may be null to disconnect the plot from its ImagePlus */
 	public void setImagePlus(ImagePlus imp) {
 		if (imp != null && imp == this.imp && imp.getProcessor() == ip)
-			return;
-		if (stack != null)
 			return;
 		if (this.imp != null)
 			this.imp.setProperty(PROPERTY_KEY, null);
@@ -1496,31 +1421,22 @@ public class Plot implements Cloneable {
 			yScale = Double.POSITIVE_INFINITY;
 	}
 
-	/** Displays the plot in a PlotWindow.
-	 *  Plot stacks are shown in a StackWindow, not in a PlotWindow;
-	 *  in this case the return value is null (use getImagePlus().getWindow() instead).
+	/** Displays the plot in a PlotWindow and returns a reference to the PlotWindow.
+	 *  Plot stacks are shown in a StackWindow, however; in this case the return value is null.
 	 *  Also returns null in BatchMode. Note that the PlotWindow might get closed
 	 *  immediately if its 'listValues' and 'autoClose' flags are set.
-	 *  @see #update()
 	 */
 	public PlotWindow show() {
 		PlotVirtualStack stack = getStack();
-<<<<<<< HEAD
-		if (stack!=null) {
-			getImagePlus().show();
-=======
 		if (stack!=null && stack.size()>1) {
 			stack.setBitDepth(grayscaleStack?8:24);
-			new ImagePlus("Plot Stack",stack).show();
-<<<<<<< HEAD
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+			ImagePlus stackImp = new ImagePlus("Plot Stack",stack);
+			stackImp.show();
+			adjustCalibration(stackImp.getCalibration());
 			return null;
 		}
 		if ((IJ.macroRunning() && IJ.getInstance()==null) || Interpreter.isBatchMode()) {
 			imp = getImagePlus();
-			imp.setPlot(this);
 			WindowManager.setTempCurrentImage(imp);
 			if (getMainCurveObject() != null) {
 				imp.setProperty("XValues", getXValues()); // Allows values to be retrieved by
@@ -1549,12 +1465,17 @@ public class Plot implements Cloneable {
 	 * N. Vischer
 	 */
 	public void addToStack() {
-		if (stack==null)
+		if (stack==null) {
 			stack = new PlotVirtualStack(getSize().width,getSize().height);
+			grayscaleStack = true;
+		}
 		draw();
 		stack.addPlot(this);
-		IJ.showStatus("addToPlotStack: "+stack.size());
+		if (isColored())
+			grayscaleStack = false;
+		IJ.showStatus("addToStack: "+stack.size());
 		allPlotObjects.clear();
+		textLoc = null;
 	}
 
 	public void appendToStack() { addToStack(); }
@@ -1601,18 +1522,13 @@ public class Plot implements Cloneable {
 		return pp.isFrozen;
 	}
 
-	/** Draws the plot again, ignored if the plot has not been drawn before or the plot is frozen. */
-	public void update() {
-		updateImage();
-	}
-
-	/** Draws the plot again, ignored if the plot has not been drawn before or the plot is frozen.
+	/** Draws the plot again, ignored if the plot has not been drawn before or the plot is frozen
 	 *	If the ImagePlus exist, updates it and its calibration. */
 	public void updateImage() {
 		if (!plotDrawn || pp.isFrozen) return;
 		getBlankProcessor();
 		drawContents(ip);
-		if (imp == null || stack != null) return;
+		if (imp == null) return;
 		adjustCalibration(imp.getCalibration());
 		imp.updateAndDraw();
 		if (ip != imp.getProcessor())
@@ -1634,7 +1550,7 @@ public class Plot implements Cloneable {
 	public ImagePlus makeHighResolution(String title, float scale, boolean antialiasedText, boolean showIt) {
 		Plot hiresPlot = null;
 		try {
-			hiresPlot = (Plot)clone();	//shallow clone, thus arrays&objects are not cloned, but they will be used only now
+			hiresPlot = (Plot)clone();	//shallow clone, thus arrays&objects are not cloned
 		} catch (Exception e) {return null;}
 		hiresPlot.ip = null;
 		hiresPlot.imp = null;
@@ -1869,8 +1785,7 @@ public class Plot implements Cloneable {
 				invertedLut = Prefs.useInvertingLut && !Interpreter.isBatchMode() && IJ.getInstance()!=null;
 				if (invertedLut) ip.invertLut();
 			}
-			if (imp != null && stack == null)
-				imp.setProcessor(ip);
+			if (imp != null) imp.setProcessor(ip);
 		}
 		if (ip instanceof ColorProcessor)
 			Arrays.fill((int[])(ip.getPixels()), 0xffffff);
@@ -1900,16 +1815,8 @@ public class Plot implements Cloneable {
 		leftMargin	 = sc(LEFT_MARGIN*marginScale);
 		rightMargin	 = sc(RIGHT_MARGIN*marginScale);
 		topMargin	 = sc(TOP_MARGIN*marginScale);
-		bottomMargin = sc(BOTTOM_MARGIN*marginScale + 2);
-		if(pp != null && pp.xLabel != null && pp.xLabel.getFont() != null){
-			float numberSize = font.getSize2D();
-			float labelSize = pp.xLabel.getFont().getSize2D();
-			float extraHeight = 1.5f *(labelSize - numberSize);
-			if(extraHeight > 0){
-				bottomMargin += sc(extraHeight);
-				leftMargin += sc(extraHeight);
-			}
-		}
+		bottomMargin = sc(BOTTOM_MARGIN*marginScale);
+		//IJ.log("marginScale="+marginScale+" left margin="+leftMargin);
 	}
 
 	/** Calculate the actual range, major step interval and set variables for data <-> pixels scaling */
@@ -1970,19 +1877,6 @@ public class Plot implements Cloneable {
 				//		currentMinMax[i] = stepForSnap * Math.round(currentMinMax[i]/stepForSnap);
 				//		currentMinMax[i+1] = stepForSnap * Math.round(currentMinMax[i+1]/stepForSnap);
 				//	}
-				} else if (enlargeRange != null) {
-					// Enlarge range slightly (only in y direction) so that markers at min, max are not hidden by the frame
-					range = currentMinMax[i+1]-currentMinMax[i];
-					double tmpMin = currentMinMax[i] - 0.015*range;
-					if (enlargeRange[i] == USUALLY_ENLARGE)		  // 'weak' enlarging: dont traverse zero
-						currentMinMax[i] = (tmpMin*currentMinMax[i] <= 0) ? 0 : tmpMin;
-					else if (enlargeRange[i] == ALWAYS_ENLARGE)	  // always enlarge
-						currentMinMax[i] = tmpMin;
-					double tmpMax = currentMinMax[i+1] + 0.015*range;
-					if (enlargeRange[i+1] == USUALLY_ENLARGE)
-						currentMinMax[i+1] = (tmpMax*currentMinMax[i+1] <= 0) ? 0 : tmpMax;
-					else if (enlargeRange[i+1] == ALWAYS_ENLARGE)
-						currentMinMax[i+1] = tmpMax;
 				}
 			}
 			if (i==0) {
@@ -2000,7 +1894,6 @@ public class Plot implements Cloneable {
 			}
 		}
 		//snapToMinorGrid = false;
-		enlargeRange = null;
 		ignoreForce2Grid = false;
 
 		// calculate what we need to convert the data to screen pixels
@@ -2018,19 +1911,23 @@ public class Plot implements Cloneable {
 		return steps;
 	}
 
-
 	public void redrawGrid(){
 		if(ip != null){
 			drawAxesTicksGridNumbers(steps);
 			ip.setColor(Color.black);
 		}
 	}
+
+	/** Gets the initial plot limits (i.e., x&y ranges). For compatibility with previous versions of ImageJ,
+	 *  only the first PlotObject (with numeric data) is used to determine the limits. */
 	void getInitialMinAndMax() {
 		int axisRangeFlags = 0;
 		if (Double.isNaN(defaultMinMax[0])) axisRangeFlags |= X_RANGE;
 		if (Double.isNaN(defaultMinMax[2])) axisRangeFlags |= Y_RANGE;
-		if (axisRangeFlags != 0)
+		if (axisRangeFlags != 0) {
 			defaultMinMax = getMinAndMax(false, axisRangeFlags);
+			enlargeRange(defaultMinMax);
+		}
 		setLimitsToDefaults(false);			//use the range values to start with, but don't draw yet
 	}
 
@@ -2040,7 +1937,11 @@ public class Plot implements Cloneable {
 	 *	Array elements returned are xMin, xMax, yMin, yMax. Also sets enlargeRange to tell which limits should be enlarged
 	 *	beyond the minimum or maximum of the data */
 	double[] getMinAndMax(boolean allObjects, int axisRangeFlags) {
-		double[] allMinMax = new double[]{Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE};
+		boolean invertedXAxis = currentMinMax[1] < currentMinMax[0];
+		boolean invertedYAxis = currentMinMax[3] < currentMinMax[2];
+		double xSign = invertedXAxis ? -1 : 1;
+		double ySign = invertedYAxis ? -1 : 1;
+		double[] allMinMax = new double[]{xSign*Double.MAX_VALUE, -xSign*Double.MAX_VALUE, ySign*Double.MAX_VALUE, -ySign*Double.MAX_VALUE};
 		for (int i=0; i<allMinMax.length; i++)
 			if (((axisRangeFlags>>i/2) & 1)==0)	  //keep default min & max for this axis
 				allMinMax[i] = defaultMinMax[i];
@@ -2076,19 +1977,34 @@ public class Plot implements Cloneable {
 		return allMinMax;
 	}
 
+	/** Enlarges the current minimum and maximum ranges to include the data range of the last plotObject added,
+	 *  if it is an XY_DATA or ARROWS plotObject.
+	 *  Does not set the new limits as default, does not redraw the plot. */
+	void fitRangeToLastPlotObject() {
+		if (allPlotObjects.size() < 1) return;
+		PlotObject plotObject = allPlotObjects.lastElement();
+		if (Double.isNaN(currentMinMax[0]) || Double.isNaN(currentMinMax[2])) {   // no range determined yet?
+			setLimitsToFit(false);
+		} else {   //we have min&max already, just extend the range if necessary
+			enlargeRange = new int[currentMinMax.length];
+			getMinAndMax(currentMinMax, enlargeRange, plotObject, ALL_AXES_RANGE);
+			enlargeRange(currentMinMax);
+		}
+	}
+
 	/** Gets the minimum and maximum values from an XY_DATA or ARROWS plotObject;
 	 *	axisRangeFlags determine for which axis (X_RANGE for x axis, Y_RANGE for y axis)
 	 *	The minimum modifies allMinAndMax[0] (x), allMinAndMax[2] (y); the maximum modifies [1], [3].
-	 *	Sets the enlargeRange variables */
+	 *	If allMinAndMax values are modified, the corresponding enlargeRange array elements are also set */
 	void getMinAndMax(double[] allMinAndMax, int[] enlargeRange, PlotObject plotObject, int axisRangeFlags) {
+		boolean invertedXAxis = currentMinMax[1] < currentMinMax[0];
+		boolean invertedYAxis = currentMinMax[3] < currentMinMax[2];
 		if (plotObject.type == PlotObject.XY_DATA) {
 			if ((axisRangeFlags & X_RANGE) != 0) {
 				int suggestedEnlarge = 0;
-				if (plotObject.shape==DOT || plotObject.yEValues != null) //these can't be seen if merging with the frame
-					suggestedEnlarge = ALWAYS_ENLARGE;
-				else if (plotObject.shape != LINE)
-					suggestedEnlarge = USUALLY_ENLARGE;
-				getMinAndMax(allMinAndMax, enlargeRange, suggestedEnlarge, 0, plotObject.xValues, plotObject.xEValues);
+				if (!(plotObject.shape == LINE || plotObject.shape == FILLED) || plotObject.yEValues != null)
+					suggestedEnlarge = ALWAYS_ENLARGE;	//enlarge to make space at the obrders (we don't try to keep x=0 at the frame border)
+				getMinAndMax(allMinAndMax, enlargeRange, suggestedEnlarge, 0, plotObject.xValues, plotObject.xEValues, invertedXAxis);
 				if ((plotObject.shape == BAR || plotObject.shape == SEPARATED_BAR)&& plotObject.xValues.length > 1) {
 					int n = plotObject.xValues.length;
 					allMinAndMax[0] -= 0.5 * Math.abs(plotObject.xValues[1] - plotObject.xValues[0]);
@@ -2099,32 +2015,36 @@ public class Plot implements Cloneable {
 				int suggestedEnlarge = 0;
 				if (plotObject.shape==DOT || plotObject.xEValues != null) //these can't be seen if merging with the frame
 					suggestedEnlarge = ALWAYS_ENLARGE;
-				else if (plotObject.shape != LINE)
+				else if (!(plotObject.shape == LINE || plotObject.shape == FILLED))
 					suggestedEnlarge = USUALLY_ENLARGE;
-				getMinAndMax(allMinAndMax, enlargeRange,  suggestedEnlarge, 2, plotObject.yValues, plotObject.yEValues);
+				getMinAndMax(allMinAndMax, enlargeRange,  suggestedEnlarge, 2, plotObject.yValues, plotObject.yEValues, invertedYAxis);
 				if ((plotObject.shape == BAR || plotObject.shape == SEPARATED_BAR) &&
-						(allMinAndMax[2] > 0 && allMinAndMax[3]/allMinAndMax[2] >= 2))
+						(allMinAndMax[2] > 0 && allMinAndMax[3]/allMinAndMax[2] >= 2) && !logYAxis)
 					allMinAndMax[2] = 0;           // for bar plots, y min = 0 unless values differ less than a factor of 2
 			}
 		} else if (plotObject.type == PlotObject.ARROWS) {
 			if ((axisRangeFlags & X_RANGE) != 0) {
-				getMinAndMax(allMinAndMax, enlargeRange, ALWAYS_ENLARGE, 0, plotObject.xValues, null);
-				getMinAndMax(allMinAndMax, enlargeRange, ALWAYS_ENLARGE, 0, plotObject.xEValues, null);
+				getMinAndMax(allMinAndMax, enlargeRange, ALWAYS_ENLARGE, 0, plotObject.xValues, null, invertedXAxis);
+				getMinAndMax(allMinAndMax, enlargeRange, ALWAYS_ENLARGE, 0, plotObject.xEValues, null, invertedXAxis);
 			}
 			if ((axisRangeFlags & Y_RANGE) != 0) {
-				getMinAndMax(allMinAndMax, enlargeRange, ALWAYS_ENLARGE, 2, plotObject.yValues, null);
-				getMinAndMax(allMinAndMax, enlargeRange, ALWAYS_ENLARGE, 2, plotObject.yEValues, null);
+				getMinAndMax(allMinAndMax, enlargeRange, ALWAYS_ENLARGE, 2, plotObject.yValues, null, invertedYAxis);
+				getMinAndMax(allMinAndMax, enlargeRange, ALWAYS_ENLARGE, 2, plotObject.yEValues, null, invertedYAxis);
 			}
 		}
 	}
 
-	/** Gets the minimum and maximum values for a dataset, taking error bars (if not null) into account.
-	 *	The minimum modifies allMinAndMax[axisIndex] the maximum modifies allMinAndMax[axisIndex+1]
-	 *	If minAndMax is not null, it is extended to include the new min&max.
-	 *	Also cares about whether the range should be enlarged to avoid hiding markers at the edges */
+	/** Gets the minimum and maximum values for a dataset (one direction, x or y),
+	 *  taking error bars (if not null) into account.
+	 *	The minimum modifies allMinAndMax[axisIndex] the maximum modifies allMinAndMax[axisIndex+1].
+	 *	Also cares about whether the range should be enlarged to avoid hiding markers at the borders:
+	 *  suggestedEnlarge is 0 for lines or a suggestion for the data type; if the allMinAndMax is
+	 *  range is extended, the corresponding enlargeRange item is set accordingly */
 	void getMinAndMax(double[] allMinAndMax, int[] enlargeRange, int suggestedEnlarge,
-			int axisIndex, float[] data, float[] errorBars) {
+			int axisIndex, float[] data, float[] errorBars, boolean invertedAxis) {
 		int nMinEqual = 0, nMaxEqual = 0;
+		int minIndex = invertedAxis ? axisIndex+1 : axisIndex;   // index of 'min' value in allMinAndMax, enlargeRange
+		int maxIndex = invertedAxis ? axisIndex : axisIndex+1;
 		for (int i=0; i<data.length; i++) {
 			double v1 = data[i];
 			double v2 = data[i];
@@ -2132,43 +2052,72 @@ public class Plot implements Cloneable {
 				v1 -= errorBars[i];
 				v2 += errorBars[i];
 			}
-			if (v1 < allMinAndMax[axisIndex]) {
-				allMinAndMax[axisIndex] = v1;
+			if (v1 < allMinAndMax[minIndex]) {
+				allMinAndMax[minIndex] = v1;
 				nMinEqual = 1;
-				enlargeRange[axisIndex] = suggestedEnlarge;
-				if (suggestedEnlarge == 0 && i>0 && i<data.length-1) //for lines except at the end: also enlarge
-					enlargeRange[axisIndex] = USUALLY_ENLARGE;
-			} else if (v1 == allMinAndMax[axisIndex])
+				enlargeRange[minIndex] = suggestedEnlarge;
+				if (suggestedEnlarge == 0 && ((i>0 && i<data.length-1) || v2 != v1)) //for lines except at the end: also enlarge
+					enlargeRange[minIndex] = USUALLY_ENLARGE;
+			} else if (v1 == allMinAndMax[minIndex])
 				nMinEqual++;
-			if (v2 > allMinAndMax[axisIndex+1]) {
-				allMinAndMax[axisIndex+1] = v2;
+			if (v2 > allMinAndMax[maxIndex]) {
+				allMinAndMax[maxIndex] = v2;
 				nMaxEqual = 1;
-				enlargeRange[axisIndex+1] = suggestedEnlarge;
-				if (suggestedEnlarge == 0 && i>0 && i<data.length-1) //for lines except at the end: also enlarge
-					enlargeRange[axisIndex+1] = USUALLY_ENLARGE;
-			} else if (v2 == allMinAndMax[axisIndex+1])
+				enlargeRange[maxIndex] = suggestedEnlarge;
+				if (suggestedEnlarge == 0 && ((i>0 && i<data.length-1) || v2 != v1)) //for lines except at the end: also enlarge
+					enlargeRange[maxIndex] = USUALLY_ENLARGE;
+			} else if (v2 == allMinAndMax[maxIndex])
 				nMaxEqual++;
 		}
-		//lines with many points (>10%) at min or max?
-		if (enlargeRange[axisIndex] == 0 && nMinEqual > 2 && nMinEqual*10 > data.length)
-			enlargeRange[axisIndex] = USUALLY_ENLARGE;
-		if (enlargeRange[axisIndex+1] == 0 && nMaxEqual > 2 && nMaxEqual*10 > data.length)
-			enlargeRange[axisIndex+1] = USUALLY_ENLARGE;
-		//all data at min or max?
+		//lines with many points (>10%) at min or max? Add extra space at borders ('usually', i.e. unless limit is zero)
+		if (enlargeRange[minIndex] == 0 && nMinEqual > 2 && nMinEqual*10 > data.length)
+			enlargeRange[minIndex] = USUALLY_ENLARGE;
+		if (enlargeRange[maxIndex] == 0 && nMaxEqual > 2 && nMaxEqual*10 > data.length)
+			enlargeRange[maxIndex] = USUALLY_ENLARGE;
+		//all data at min or max? Always add space to avoid hiding the line behind the frame
 		if (nMinEqual == data.length)
-			enlargeRange[axisIndex] = ALWAYS_ENLARGE;
+			enlargeRange[minIndex] = ALWAYS_ENLARGE;
 		if (nMaxEqual == data.length)
-			enlargeRange[axisIndex+1] = ALWAYS_ENLARGE;
-		//min or max set previously, but not with proper enlarge range?
-		if (nMinEqual>0 && enlargeRange[axisIndex]<suggestedEnlarge)
-			enlargeRange[axisIndex] = suggestedEnlarge;
-		if (nMaxEqual>0 && enlargeRange[axisIndex+1]<suggestedEnlarge)
-			enlargeRange[axisIndex+1] = suggestedEnlarge;
+			enlargeRange[maxIndex] = ALWAYS_ENLARGE;
+		//same min or max as for current data set found already previously, but not asking yet for added space at borders?
+		if (nMinEqual>0 && enlargeRange[minIndex]<suggestedEnlarge)
+			enlargeRange[minIndex] = suggestedEnlarge;
+		if (nMaxEqual>0 && enlargeRange[maxIndex]<suggestedEnlarge)
+			enlargeRange[maxIndex] = suggestedEnlarge;
 	}
 
-	/** Saves the plot range for later restoring by 'setPreviousMinMax' */
 	void saveMinMax() {
-		System.arraycopy(currentMinMax, 0, savedMinMax, 0, currentMinMax.length);
+		if (!Arrays.equals(currentMinMax, savedMinMax))
+			System.arraycopy(currentMinMax, 0, savedMinMax, 0, currentMinMax.length);
+	}
+
+	/** Modifies automatic limits to avoid points exactly at the borders.
+	 *  This only happens for limits where the corresponding value of the class array 'enlargeRange' is set:
+	 *  ALWAYS_ENLARGE: always enlarges the range; USUALLY_ENLARGE means that the limits should not be shifted across zero */
+	void enlargeRange(double[] minMax) {
+		if (enlargeRange == null) return;
+		for (int a=0; a<Math.min(minMax.length, enlargeRange.length); a+=2) { //for all axes (0 for x, 2 for y)
+			boolean logAxis = a==0 ? logXAxis : logYAxis;
+			if (logAxis) {
+				minMax[a] = Math.log10(minMax[a]);
+				minMax[a+1] = Math.log10(minMax[a+1]);
+			}
+			double range = minMax[a+1] - minMax[a];
+			double tmpMin = minMax[a] - 0.015*range;
+			if (enlargeRange[a] == USUALLY_ENLARGE && !logAxis)  // 'weak' enlarging: dont traverse zero
+				minMax[a] = (tmpMin*minMax[a] <= 0) ? 0 : tmpMin;
+			else if (enlargeRange[a] == ALWAYS_ENLARGE)
+				minMax[a] = tmpMin;
+			double tmpMax = minMax[a+1] + 0.015*range;
+			if (enlargeRange[a+1] == USUALLY_ENLARGE && !logAxis)
+				minMax[a+1] = (tmpMax*minMax[a+1] <= 0) ? 0 : tmpMax;
+			else if (enlargeRange[a+1] == ALWAYS_ENLARGE)
+				minMax[a+1] = tmpMax;
+			if (logAxis) {
+				minMax[a] = Math.pow(10, minMax[a]);
+				minMax[a+1] = Math.pow(10, minMax[a+1]);
+			}
+		}
 	}
 
 	/** Returns the first font of the list that is not null, or defaultFont if both are null */
@@ -2193,24 +2142,12 @@ public class Plot implements Cloneable {
 	}
 
 	/**
-	 * Adjusts the plot range when the user clicks one of the overlay symbols at the
-	 * axes. Index numbers for arrows start with 0 at the 'down' arrow of the
-	 * lower side of the x axis and end with 7 the up arrow at the upper
-	 * side of the y axis. Numbers 8 & 9 are for "Reset Range" and "Fit All";
-	 * numbers 10-13 for a dialog to set a single limit, and 14-15 for an axis options dialog.
-	 * Numbers 10-15 must correspond to the dialogTypes as defined in PlotDialog.
+	 * Zooms in or out when the user clicks one of the overlay arrows at the
+	 * axes. Index numbers start with 0 at the 'down' arrow of the lower side of
+	 * the x axis and end with the up arrow at the upper side of the y axis.
 	 */
 	void zoomOnRangeArrow(int arrowIndex) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-		if (arrowIndex < 0) return;
-		if (arrowIndex < 8) {//0..7 = arrows, 8 = Reset Range, 9 = Fit All, 10..13 = set single limit
-=======
-		if (arrowIndex < 8) {//0..7 = arrows, 8 = Reset Range
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-=======
-		if (arrowIndex < 8) {//0..7 = arrows, 8 = Reset Range
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+		if (arrowIndex < 8) {//0..7 = arrows, 8 = Reset Range, 9 = Fit All
 			int axisIndex = (arrowIndex / 4) * 2;  //0 for x, 2 for y
 			double min = axisIndex == 0 ? xMin : yMin;
 			double max = axisIndex == 0 ? xMax : yMax;
@@ -2231,31 +2168,11 @@ public class Plot implements Cloneable {
 			}
 			currentMinMax[axisIndex] = min;
 			currentMinMax[axisIndex + 1] = max;
-<<<<<<< HEAD
-<<<<<<< HEAD
-		} else if (arrowIndex == 8) {
+		} else if (arrowIndex == 8)
 			setLimitsToDefaults(false);
-		} else if (arrowIndex == 9) {
+		else if (arrowIndex == 9)
 			setLimitsToFit(false);
-		} else if (arrowIndex <= 15) {
-			int dialogType = arrowIndex;
-			new PlotDialog(this, dialogType).showDialog(imp.getWindow());
-		}
-		if (arrowIndex <= 9) // the PlotDialog cares about updating the plot
-			updateImage();
-=======
-		}
-
-		if (arrowIndex == 8)
-			setLimitsToDefaults(false);
-=======
-		}
-
-		if (arrowIndex == 8)
-			setLimitsToDefaults(false);
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		updateImage();
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	}
 
 	/**
@@ -2343,8 +2260,6 @@ public class Plot implements Cloneable {
 	 *	The grid or major tick spacing in each direction is given by steps */
 	void drawAxesTicksGridNumbers(double[] steps) {
 
-		if (ip==null)
-			return;
 		String[] xCats = labelsInBraces('x');   // create categories for the axes (if any)
 		String[] yCats = labelsInBraces('y');
 		Font scFont = scFont(pp.frame.getFont());
@@ -2602,25 +2517,14 @@ public class Plot implements Cloneable {
 		} else
 			y += sc(1);
 		// --- Write x and y axis text labels
-		if (xCats == null) {
+		if (xCats == null){
 			ip.setFont(pp.xLabel.getFont() == null ? scFont : scFont(pp.xLabel.getFont()));
-			ImageProcessor xLabel = stringToPixels(xLabelToDraw);
-			if(xLabel != null){
-				int xpos = leftMargin+(frame.width-xLabel.getWidth())/2;
-				int ypos = y + scFont.getSize()/3;//topMargin + frame.height + bottomMargin-xLabel.getHeight();
-				ip.insert(xLabel, xpos, ypos);
-			}
+			ip.drawString(xLabelToDraw, leftMargin+(frame.width-ip.getStringWidth(xLabelToDraw))/2, y+ip.getFontMetrics().getHeight());
 		}
-		if (yCats == null) {
-			ip.setFont(pp.yLabel.getFont() == null ? scFont : scFont(pp.yLabel.getFont()));
-			ImageProcessor yLabel = stringToPixels(yLabelToDraw);
-			if(yLabel != null){
-				yLabel = yLabel.rotateLeft();
-				int xRightOfYLabel = xNumberRight - maxNumWidth - sc(2);
-				int xpos = xRightOfYLabel - yLabel.getWidth() - sc(2);
-				int ypos = topMargin + (frame.height -yLabel.getHeight())/2;
-				ip.insert(yLabel, xpos, ypos);
-			}
+		if (yCats == null && yLabelToDraw.length() > 0) {
+			int xRightOfYLabel = xNumberRight - maxNumWidth - sc(2);
+			Font yLabelFont = pp.yLabel.getFont() == null ? scFont : scFont(pp.yLabel.getFont());
+			drawYLabel(yLabelToDraw, xRightOfYLabel, topMargin, frame.height, yLabelFont);
 		}
 	}
 
@@ -2680,114 +2584,6 @@ public class Plot implements Cloneable {
 		}
 		ip.drawString(base, x, y+fontAscent*7/10);
 		return width;
-	}
-
-	//Returns a pixelMap containting labelStr.
-	//Uses font of current ImageProcessor.
-	//Returns null for empty or blank-only strings
-	//Supports !!subscript!! and ^^superscript^^
-	ByteProcessor stringToPixels(String labelStr) {
-		Font bigFont = ip.getFont();
-		Rectangle rect = ip.getStringBounds(labelStr);
-		int ww = rect.width * 2;
-		int hh = rect.height * 3;//enough space, will be cropped later
-		int y0 = rect.height * 2;//base line
-		if (ww <= 0 || hh <= 0) {
-			return null;
-		}
-		ByteProcessor box = new ByteProcessor(ww, hh);
-		box.setColor(Color.WHITE);
-		//box.setColor(Color.LIGHT_GRAY); //make box visible for test
-		box.fill();
-		box.setColor(Color.black);
-		box.setAntialiasedText(pp.antialiasedText);
-		if (invertedLut) {
-			box.invertLut();
-		}
-		box.setFont(bigFont);
-
-		FontMetrics fm = box.getFontMetrics();
-		int ascent = fm.getAscent();
-		int offSub = ascent / 6;
-		int offSuper = -ascent / 2;
-		Font smallFont = bigFont.deriveFont((float) (bigFont.getSize() * 0.7));
-
-		Rectangle bigBounds = box.getStringBounds(labelStr);
-		boolean doParse = (labelStr.indexOf("^^") >= 0 || labelStr.indexOf("!!") >= 0);
-		doParse = doParse && (labelStr.indexOf("^^^") < 0 && labelStr.indexOf("!!!") < 0);
-		if (!doParse) {
-			box.drawString(labelStr, 0, y0);
-			Rectangle cropRect = new Rectangle(bigBounds);
-			cropRect.y += y0;
-			box.setRoi(cropRect);
-			ImageProcessor boxI = box.crop();
-			box = boxI.convertToByteProcessor();
-			return box;
-		}
-
-		if (labelStr.endsWith("^^") || labelStr.endsWith("!!")) {
-			labelStr = labelStr.substring(0, labelStr.length() - 2);
-		}
-		if (labelStr.startsWith("^^") || labelStr.startsWith("!!")) {
-			labelStr = " " + labelStr;
-		}
-
-		box.setFont(smallFont);
-		Rectangle smallBounds = box.getStringBounds(labelStr);
-		box.setFont(bigFont);
-		int upperBound = y0 + smallBounds.y + offSuper;
-		int lowerBound = y0 + smallBounds.y + smallBounds.height + offSub;
-
-		int h = fm.getHeight();
-		int len = labelStr.length();
-		int[] tags = new int[len];
-		int nTags = 0;
-
-		for (int jj = 0; jj < len - 2; jj++) {//get positions where font size changes
-			if (labelStr.substring(jj, jj + 2).equals("^^")) {
-				tags[nTags++] = jj;
-			}
-			if (labelStr.substring(jj, jj + 2).equals("!!")) {
-				tags[nTags++] = -jj;
-			}
-		}
-		tags[nTags++] = len;
-		tags = Arrays.copyOf(tags, nTags);
-
-		int leftIndex = 0;
-		int xRight = 0;
-		int y2 = y0;
-
-		boolean subscript = labelStr.startsWith("!!");
-		for (int pp = 0; pp < tags.length; pp++) {//draw all text fragments
-			int rightIndex = tags[pp];
-			rightIndex = Math.abs(rightIndex);
-			String part = labelStr.substring(leftIndex, rightIndex);
-			boolean small = pp % 2 == 1;//toggle odd/even
-			if (small) {
-				box.setFont(smallFont);
-				if (subscript) {
-					y2 = y0 + offSub;
-				} else {//superscript:
-					y2 = y0 + offSuper;
-				}
-			} else {
-				box.setFont(bigFont);
-				y2 = y0;
-			}
-			xRight++;
-			int partWidth = box.getStringWidth(part);
-			box.drawString(part, xRight, y2);
-			leftIndex = rightIndex + 2;
-			subscript = tags[pp] < 0;//negative positions = subscript
-			xRight += partWidth;
-		}
-		xRight += h / 4;
-		Rectangle cropRect = new Rectangle(0, upperBound, xRight, lowerBound - upperBound);
-		box.setRoi(cropRect);
-		ImageProcessor boxI = box.crop();
-		box = boxI.convertToByteProcessor();
-		return box;
 	}
 
 	// Number of digits to display the number n with resolution 'resolution';
@@ -3120,8 +2916,6 @@ public class Plot implements Cloneable {
 		int ybase = y-sc(size/2);
 		int xend = x+sc(size/2);
 		int yend = y+sc(size/2);
-		if (ip==null)
-			return;
 		switch(shape) {
 			case X:
 				ip.drawLine(xbase,ybase,xend,yend);
@@ -3183,7 +2977,7 @@ public class Plot implements Cloneable {
 				WindowManager.setTempCurrentImage(null);
 				break;
 			default: // CIRCLE, CONNECTED_CIRCLES: 5x5 oval approximated by 5x5 square without corners
-				if (sc(size) < 5.01 && plotObject.lineWidth < 2) {
+				if (sc(size) < 5.01) {
 					ip.drawLine(x-1, y-2, x+1, y-2);
 					ip.drawLine(x-1, y+2, x+1, y+2);
 					ip.drawLine(x+2, y+1, x+2, y-1);
@@ -3349,6 +3143,31 @@ public class Plot implements Cloneable {
 		}
 	}
 
+	/** Vertical text for y axis label */
+	void drawYLabel(String yLabel, int xRight, int yFrameTop, int frameHeight, Font scaledFont) {
+		if (yLabel.equals(""))
+			return;
+		ip.setFont(scaledFont);
+		FontMetrics fm = ip.getFontMetrics();
+		int h = fm.getHeight();
+		//int w =	 ip.getStringWidth(yLabel) + sc(5);
+		//int h =	 fm.getHeight()+sc(1);
+		Rectangle rect = ip.getStringBounds(yLabel);
+		ImageProcessor label = new ByteProcessor(rect.x+rect.width, Math.max(h, rect.height));
+		label.setAntialiasedText(pp.antialiasedText);
+		if (invertedLut)
+			label.invertLut();
+		label.setColor(Color.white);
+		label.fill();
+		label.setColor(Color.black);
+		label.setFont(scaledFont);
+		label.drawString(yLabel, 0, Math.max(-rect.y, h)); //can't antialias if x<0 or y<h
+		label = label.rotateLeft();
+		int y2 = yFrameTop + (frameHeight-label.getHeight())/2;
+		if (y2 < 0) y2 = 0;
+		int x2 = Math.max(xRight-label.getWidth()*4/3, 0); // distance 1/3 height if possible
+		ip.insert(label, x2, y2);
+	}
 
 	/** Draw the legend */
 	void drawLegend(PlotObject legendObject, ImageProcessor ip) {
@@ -3570,32 +3389,12 @@ public class Plot implements Cloneable {
 		return getResultsTable(true);
 	}
 
-	/** Creates a ResultsTable with the data of the plot. Returns null if no data.
+	/** Creates a ResultsTable with the data of the plot. Returns an empty table if no data.
 	 * Does not write the first x column if writeFirstXColumn is false.
 	 * When all columns are the same length, x columns equal to the first x column are
 	 * not written, independent of writeFirstXColumn.
-	 * Column headings are "X", "Y", "X1", "Y1", etc, irrespective of any labels of the data sets
 	 */
 	public ResultsTable getResultsTable(boolean writeFirstXColumn) {
-		return getResultsTable(writeFirstXColumn, false);
-	}
-
-	/** Creates a ResultsTable with the data of the plot. Returns null if no data.
-	 * When all columns are the same length, x columns equal to the first x column are
-	 * not written, independent of writeFirstXColumn.
-	 * When the data sets have labels, they are used for column headings
-	 */
-	public ResultsTable getResultsTableWithLabels() {
-		return getResultsTable(true, true);
-	}
-
-	/** Creates a ResultsTable with the data of the plot. Returns null if no data.
-	 * Does not write the first x column if writeFirstXColumn is false.
-	 * When all columns are the same length, x columns equal to the first x column are
-	 * not written, independent of writeFirstXColumn.
-	 * When the data sets have labels and useLabels is true, they are used for column headings,
-	 * otherwise columns are named X, Y, X1, Y1, ... */
-	ResultsTable getResultsTable(boolean writeFirstXColumn, boolean useLabels) {
 		ResultsTable rt = new ResultsTable();
 		// find the longest x-value data set and count the data sets
 		int nDataSets =	 0;
@@ -3629,13 +3428,13 @@ public class Plot implements Cloneable {
 			if (plotObject.type==PlotObject.XY_DATA) {
 				boolean sameX = firstXYobject!=null && Arrays.equals(firstXYobject.xValues, plotObject.xValues) && allSameLength;
 				boolean sameXY = sameX && Arrays.equals(firstXYobject.yValues, plotObject.yValues); //ignore duplicates (e.g. Markers plus Curve)
-				boolean writeX = firstXYobject==null ? writeFirstXColumn : !sameX;
-				addToLists(headings, data, plotObject, dataSetNumber, writeX, /*writeY=*/!sameXY, /*multipleSets=*/nDataSets>1, useLabels);
+				boolean writeX = firstXYobject==null?writeFirstXColumn:!sameX;
+				addToLists(headings, data, plotObject, dataSetNumber, writeX, /*writeY=*/!sameXY, nDataSets>1);
 				if (firstXYobject == null)
 					firstXYobject = plotObject;
 				dataSetNumber++;
 			} else if (plotObject.type==PlotObject.ARROWS) {
-				addToLists(headings, data, plotObject, arrowsNumber, /*writeX=*/true, /*writeY=*/true, /*multipleSets=*/nDataSets>1, /*useLabels=*/false);
+				addToLists(headings, data, plotObject, arrowsNumber, /*writeX=*/true, /*writeY=*/true, nDataSets>1);
 				arrowsNumber++;
 			}
 		}
@@ -3663,48 +3462,27 @@ public class Plot implements Cloneable {
 	// when writing float data, precision should be at least 1e-5*data range
 	static final double MIN_FLOAT_PRECISION = 1e-5;
 
+
 	void addToLists(ArrayList<String> headings, ArrayList<float[]>data, PlotObject plotObject,
-			int dataSetNumber, boolean writeX, boolean writeY, boolean multipleSets, boolean useLabels) {
-		String plotObjectLabel = useLabels ? replaceSpacesEtc(plotObject.label) : null;
+			int dataSetNumber, boolean writeX, boolean writeY, boolean multipleSets) {
 		if (writeX) {
-			String label = null;                                                     // column header for x column
-			if (plotObject.type!=PlotObject.ARROWS) {
+			String label = plotObject.type == PlotObject.ARROWS ? "XStart" : "X";
+			if (multipleSets) label += dataSetNumber;
+			if (dataSetNumber==0 && plotObject.type!=PlotObject.ARROWS) {
 				String plotXLabel = getLabel('x');
-				if (dataSetNumber==0 && plotXLabel!=null) {                          // use x axis label for 1st dataset if permitted
-					if (useLabels)
-						label = replaceSpacesEtc(plotXLabel);
-					else if (plotXLabel.startsWith(" ") && plotXLabel.endsWith(" ")) // legacy: always use axis label for 1st data if spaces at start&end
-						label = plotXLabel.substring(1,plotXLabel.length()-1);
-				} else if (plotObjectLabel != null && dataSetNumber>0)
-					label = "X_"+plotObjectLabel;                                    // use "X_" + dataset label
-				if (label != null && headings.contains(label))
-					label = null; // avoid duplicate labels (not possible in ResultsTable)
-			}
-			if (label == null) {                                                     // create default label if no specific label yet
-				label = plotObject.type == PlotObject.ARROWS ? "XStart" : "X";
-				if (multipleSets) label += dataSetNumber;
+				if (plotXLabel!=null && plotXLabel.startsWith(" ") && plotXLabel.endsWith(" "))
+					label = plotXLabel.substring(1,plotXLabel.length()-1);
 			}
 			headings.add(label);
 			data.add(plotObject.xValues);
 		}
 		if (writeY) {
-			String label = null;;                                                     // column header for y column
-			if (plotObject.type!=PlotObject.ARROWS) {
+			String label = plotObject.type == PlotObject.ARROWS ? "YStart" : "Y";
+			if (multipleSets) label += dataSetNumber;
+			if (dataSetNumber==0 && plotObject.type!=PlotObject.ARROWS) {
 				String plotYLabel = getLabel('y');
-				if (dataSetNumber==0 && plotYLabel!=null) {
-					if (useLabels && plotObjectLabel == null)                         // use y axis label for 1st dataset if no data set label
-						label = replaceSpacesEtc(plotYLabel);
-					else if (plotYLabel.startsWith(" ") && plotYLabel.endsWith(" "))  // legacy: always use axis label for 1st data if spaces at start&end
-						label = plotYLabel.substring(1,plotYLabel.length()-1);
-				}
-				if (plotObjectLabel != null)
-					label = plotObjectLabel;
-				if (label != null && headings.contains(label))
-					label = null; // avoid duplicate labels (not possible in ResultsTable)
-			}
-			if (label == null) {                                                     // create default label if no specific label yet
-				label = plotObject.type == PlotObject.ARROWS ? "YStart" : "Y";
-				if (multipleSets) label += dataSetNumber;
+				if (plotYLabel!=null && plotYLabel.startsWith(" ") && plotYLabel.endsWith(" "))
+					label = plotYLabel.substring(1,plotYLabel.length()-1);
 			}
 			headings.add(label);
 			data.add(plotObject.yValues);
@@ -3721,15 +3499,6 @@ public class Plot implements Cloneable {
 			headings.add(label);
 			data.add(plotObject.yEValues);
 		}
-	}
-
-	/** Convert a string to a label suitable for a ResultsTable without whitespace, quotes or commas,
-	 *  to avoid problems when saving and reading the table. Returns null if an empty string or null. */
-	static String replaceSpacesEtc(String s) {
-		if (s == null) return null;
-		s = s.trim().replaceAll("[\\s,]", "_").replace("\"","''");
-		if (s.length() == 0) return null;
-		return s;
 	}
 
 	/** get the number of digits for writing a column to the results table or the clipboard */
@@ -3905,17 +3674,6 @@ class PlotProperties implements Cloneable, Serializable {
 		}
 	}
 
-	/** A deep clone; it also duplicates arrays and pPlotObjects */
-	public PlotProperties deepClone() {
-		PlotProperties pp2 = clone(); //shallow clone
-		if (frame != null)  pp2.frame  = frame.deepClone();
-		if (xLabel != null) pp2.xLabel = xLabel.deepClone();
-		if (yLabel != null) pp2.yLabel = yLabel.deepClone();
-		if (legend != null) pp2.legend = legend.deepClone();
-		if (rangeMinMax != null) pp2.rangeMinMax = rangeMinMax.clone();
-		return pp2;
-	}
-
 } // class PlotProperties
 
 /** This class contains the data and properties for displaying a curve, a set of arrows, a line or a label in a plot,
@@ -3925,9 +3683,9 @@ class PlotProperties implements Cloneable, Serializable {
 class PlotObject implements Cloneable, Serializable {
 	/** The serialVersionUID should not be modified, otherwise saved plots won't be readable any more */
 	static final long serialVersionUID = 1L;
-	/** constants for the type of objects */
-	public final static int XY_DATA = 0, ARROWS = 1, LINE = 2, NORMALIZED_LINE = 3, DOTTED_LINE = 4,
-			LABEL = 5, NORMALIZED_LABEL = 6, LEGEND = 7, AXIS_LABEL = 8, FRAME = 9, SHAPES = 10;
+	/** Constants for the type of objects. These are powers of two so one can use them as masks */
+	public final static int XY_DATA = 1, ARROWS = 2, LINE = 4, NORMALIZED_LINE = 8, DOTTED_LINE = 16,
+			LABEL = 32, NORMALIZED_LABEL = 64, LEGEND = 128, AXIS_LABEL = 256, FRAME = 512, SHAPES = 1024;
 	/** mask for recovering font style from the flags */
 	final static int FONT_STYLE_MASK = 0x0f;
 	/** flag for the data set passed with the constructor. Note that 0 to 0x0f are reserved for fonts modifiers, 0x010-0x800 are reserved for legend modifiers */
@@ -4111,6 +3869,11 @@ class PlotObject implements Cloneable, Serializable {
 		return font;
 	}
 
+	/** Returns all data xValues, yValues, xEValues, yEValues as a float[][] array. Note that future versions may have more data. */
+	float[][] getAllDataValues() {
+		return new float[][] {xValues, yValues, xEValues, yEValues};
+	}
+
 	/** A shallow clone that does not duplicate arrays or objects */
 	public PlotObject clone() {
 		try {
@@ -4120,9 +3883,8 @@ class PlotObject implements Cloneable, Serializable {
 		}
 	}
 
-	/** A deep clone, which duplicates arrays etc.
-	 *  Note that colors & font are not cloned; it is assumed that these wil not be modified but replaced,
-	 *  so the clone remains unaffected */
+	/** A deep clone, which duplicates arrays etc. Note that the colors and the font are not cloned;
+	 *  it is assumed these are never modified but only replaced by other objects. */
 	public PlotObject deepClone() {
 		PlotObject po2 = clone();
 		if (xValues != null) po2.xValues = xValues.clone();
@@ -4149,19 +3911,13 @@ class PlotObject implements Cloneable, Serializable {
 		return dest;
 	}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 	/** Converts old (pre-1.52i) type codes for the PlotObjects to the new ones, which can be used as masks */
 	void updateType() {
 		type = 1<<type;
 	}
 
-	public String toString() {  //for debug messages
-		String s = "PlotObject type="+type+" flags="+flags+" xV:"+(xValues==null ? "-":yValues.length)+" yV:"+(yValues==null ? "-":yValues.length)+" label="+label+" col="+color+" fSize="+fontSize+" ff="+fontFamily;
+	/*public String toString() {  //for debug messages
+		String s = "PlotObject type="+type+" flags="+flags+" xV:"+(xValues==null ? "-":yValues.length)+" yV:"+(yValues==null ? "-":yValues.length+" col="+color);
 		return s;
-	}
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+	}*/
 } // class PlotObject

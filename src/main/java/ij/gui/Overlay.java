@@ -5,7 +5,6 @@ import java.awt.geom.Rectangle2D;
 import ij.*;
 import ij.process.ImageProcessor;
 import ij.plugin.filter.Analyzer;
-import ij.plugin.Colors;
 import ij.measure.ResultsTable;
 
 /** An Overlay is a list of ROIs that can be drawn non-destructively on an Image. */
@@ -91,6 +90,15 @@ public class Overlay {
     	}
     }
     
+    /** Returns the ROI with the specified name or null if not found. */
+    public Roi get(String name) {
+    	int index = getIndex(name);
+    	if (index==-1)
+    		return null;
+    	else
+    		return get(index);   		
+    }
+
     /** Returns the index of the ROI with the specified name, or -1 if not found. */
     public int getIndex(String name) {
     	if (name==null) return -1;
@@ -123,13 +131,6 @@ public class Overlay {
 		Roi[] rois = toArray();
 		for (int i=0; i<rois.length; i++)
 			rois[i].setStrokeColor(color);
-	}
-
-    /** Sets the stroke width of all the ROIs in this overlay. */
-    public void setStrokeWidth(Double width) {
-		Roi[] rois = toArray();
-		for (int i=0; i<rois.length; i++)
-			rois[i].setStrokeWidth(width);
 	}
 
     /** Sets the fill color of all the ROIs in this overlay. */
@@ -290,7 +291,7 @@ public class Overlay {
 		overlay2.drawNames(drawNames);
 		overlay2.drawBackgrounds(drawBackgrounds);
 		overlay2.setLabelColor(labelColor);
-		overlay2.setLabelFont(labelFont, scalableLabels);
+		overlay2.setLabelFont(labelFont);
 		overlay2.setIsCalibrationBar(isCalibrationBar);
 		overlay2.selectable(selectable);
 		return overlay2;
@@ -305,6 +306,10 @@ public class Overlay {
 		return overlay2;
 	}
 	
+	public String toString() {
+    	return "Overlay[size="+size()+"]";
+    }
+    
     public void drawLabels(boolean b) {
     	label = b;
     }
@@ -349,23 +354,6 @@ public class Overlay {
     	scalableLabels = scalable;
     }
 
-    /** Set the label font size with options. The options string can contain
-     * 'scale' (enlarge labels when image zoomed), 'bold'
-     * (display bold labels) or 'background' (display labels
-     * with contrasting background.
-    */
-    public void setLabelFontSize(int size, String options) {
-    	int style = Font.PLAIN;
-    	if (options!=null) {
-    		scalableLabels = options.contains("scale");
-    		if (options.contains("bold"))
-    			style = Font.BOLD;
-    		drawBackgrounds = options.contains("back");
-    	}
-    	labelFont = new Font("SansSerif", style, size);
-    	drawLabels(true);
-    }
-
     public Font getLabelFont() {
     	return labelFont;
     }
@@ -397,42 +385,5 @@ public class Overlay {
  	public boolean scalableLabels() {
 		return scalableLabels;
 	}
-	
-	public String toString() {
-    	return "Overlay[size="+size()+" "+(scalableLabels?"scale":"")+" "+Colors.colorToString(getLabelColor())+"]";
-    }
-    
-    /** Updates overlays created by the particle analyzer
-    	after rows are deleted from the Results table. */
-    public static void updateTableOverlay(ImagePlus imp, int first, int last, int tableSize) {
-		if (imp==null)
-			return;
-		Overlay overlay = imp.getOverlay();
-		if (overlay==null)
-			return;
-		if (overlay.size()!=tableSize)
-			return;
-		if (first<0)
-			first = 0;
-		if (last>tableSize-1)
-			last = tableSize-1;
-		if (first>last)
-			return;
-		String name1 = overlay.get(0).getName();
-		String name2 = overlay.get(overlay.size()-1).getName();
-		if (!"1".equals(name1) || !(""+tableSize).equals(name2))
-			return;
-		int count = last-first+1;
-		if (overlay.size()==count && !IJ.isMacro()) {
-			if (count==1 || IJ.showMessageWithCancel("ImageJ", "Delete "+overlay.size()+" element overlay?  "))
-				imp.setOverlay(null);
-			return;
-		}
-		for (int i=0; i<count; i++)
-			overlay.remove(first);
-		for (int i=first; i<overlay.size(); i++)
-			overlay.get(i).setName(""+(i+1));
-		imp.draw();
-	}
-    
+
 }

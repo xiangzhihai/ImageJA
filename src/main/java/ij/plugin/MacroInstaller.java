@@ -19,7 +19,7 @@ public class MacroInstaller implements PlugIn, MacroConstants, ActionListener {
 	public static final int MAX_SIZE = 28000, MAX_MACROS=100, XINC=10, YINC=18;
 	public static final char commandPrefix = '^';
 	static final String commandPrefixS = "^";
-	static final int MACROS_MENU_COMMANDS = 7; // number of commands in Plugins>Macros submenu
+	static final int MACROS_MENU_COMMANDS = 6; // number of commands in Plugins>Macros submenu
 	
 	private int[] macroStarts;
 	private String[] macroNames;
@@ -257,21 +257,9 @@ public class MacroInstaller implements PlugIn, MacroConstants, ActionListener {
 			if (text!=null)
 				Interpreter.setAdditionalFunctions(text);
 	}
-	
-	 /** Installs a macro set contained in ij.jar. */
-	public static void installFromJar(String path) {
-		try {
-			(new MacroInstaller()).installFromIJJar(path);
-		} catch (Exception e) {}
-	}
-	
+
 	 /** Installs a macro set contained in ij.jar. */
 	public void installFromIJJar(String path) {
-		boolean installMacros = false;
-		if (path.endsWith("MenuTool.txt+")) {
-			path = path.substring(0,path.length()-1);
-			installMacros = true;
-		}
 		String text = openFromIJJar(path);
 		if (text==null) return;
 		if (path.endsWith("StartupMacros.txt")) {
@@ -280,15 +268,9 @@ public class MacroInstaller implements PlugIn, MacroConstants, ActionListener {
 			Toolbar tb = Toolbar.getInstance();
 			if (tb!=null)
 				tb.installStartupTools();
-<<<<<<< HEAD
-<<<<<<< HEAD
-		} else if (path.contains("Tools") || installMacros) {
+		} else if (path.contains("Tools"))
 			install(text);
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-		} else
+		else
 			installSingleTool(text);
 	}
 

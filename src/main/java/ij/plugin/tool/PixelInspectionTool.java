@@ -177,7 +177,7 @@ class PixelInspector extends PlugInFrame
 		if (loc!=null)
 			setLocation(loc);
 		else
-			GUI.centerOnImageJScreen(this);
+			GUI.center(this);
 		setResizable(false);
 		show();
 		toFront();
@@ -205,7 +205,6 @@ class PixelInspector extends PlugInFrame
 					add(labels[p]);
 			}
 		}
-		GUI.scale(this);
 		pack();
 	}
 

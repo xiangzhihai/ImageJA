@@ -11,9 +11,9 @@ public class Text implements PlugIn, DialogListener {
 	private static final String[] styles = {"Plain", "Bold", "Italic", "Bold+Italic"};
 	private static final String[] justifications = {"Left", "Center", "Right"};
 	private static GenericDialog gd;
-	private String font = TextRoi.getFont();
-	private int fontSize = TextRoi.getSize();
-	private int style = TextRoi.getStyle();
+	private String font = TextRoi.getDefaultFontName();
+	private int fontSize = TextRoi.getDefaultFontSize();
+	private int style = TextRoi.getDefaultFontStyle();
 	private int justification = TextRoi.getGlobalJustification();
 	private int angle;
 	private boolean antialiased = TextRoi.isAntialiased();
@@ -43,10 +43,10 @@ public class Text implements PlugIn, DialogListener {
 			Color c = textRoi.getStrokeColor();
 			if (c!=null) color=c;
 			fillc = Colors.colorToString2(textRoi.getFillColor());
-			antialiased = textRoi.getAntiAlias();
+			antialiased = textRoi.getAntialiased();
 		}
 		colorName = Colors.colorToString2(color);
-		gd = NonBlockingGenericDialog.newDialog("Fonts");
+		gd = new NonBlockingGenericDialog("Fonts");
 		gd.addChoice("Font:", getFonts(), font);
 		gd.addChoice("Style:", styles, styles[style]);
 		gd.addChoice("Just:", justifications, justifications[justification]);
@@ -112,7 +112,7 @@ public class Text implements PlugIn, DialogListener {
 			textRoi.setAngle(angle);
 			textRoi.setJustification(justification);
 			textRoi.setFillColor(fillColor);
-			textRoi.setAntiAlias(antialiased);
+			textRoi.setAntialiased(antialiased);
 		}
 		return true;
 	}

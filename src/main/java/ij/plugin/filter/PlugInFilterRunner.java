@@ -14,6 +14,7 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 	private Object theFilter;					// the instance of the PlugInFilter
 	private ImagePlus imp;
 	private int flags;							// the flags returned by the PlugInFilter
+	private boolean snapshotDone;		// whether the ImageProcessor has a snapshot already
 	private Overlay originalOverlay;		// overlay before pressing 'preview', to revert
 	private boolean previewCheckboxOn;			// the state of the preview checkbox (true = on)
 	private boolean bgPreviewOn;		// tells the background thread that preview is allowed
@@ -24,14 +25,13 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 	private long previewTime;				// time (ms) needed for preview processing
 	private boolean ipChanged;			// whether the image data have been changed
 	private int processedAsPreview;			// the slice processed during preview (if non-zero)
-	private Object snapshotPixels;		// the snapshot to show we have one and for undo in case of parallel actions intervening
 	private Hashtable<Thread, int[]> slicesForThread;		// gives first&last slice that a given thread should process
 	private Hashtable<Thread, ImageProcessor> roisForThread;// gives ROI that a given thread should process
 	Hashtable sliceForThread = new Hashtable(); // here the stack slice currently processed is stored.
 	private int nPasses;						// the number of calls to the run(ip) method of the filter
 	private int pass;						// passes done so far
 	private boolean doStack;
-
+	
 	/** The constructor runs a PlugInFilter or ExtendedPlugInFilter by calling its
 	 * setup, run, etc. methods. For details, see the documentation of interfaces
 	 * PlugInFilter and ExtendedPlugInFilter.
@@ -66,7 +66,7 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 				if (Macro.MACRO_CANCELED.equals(e.getMessage()))
 					throw new RuntimeException(Macro.MACRO_CANCELED);
 			}
-			if (snapshotPixels != null)
+			if (snapshotDone)
 				Undo.setup(Undo.FILTER, imp);			// ip has a snapshot that may be used for Undo
 			boolean keepPreviewFlag = (flags&ExtendedPlugInFilter.KEEP_PREVIEW)!=0;
 			if (keepPreviewFlag && imp!=null && previewThread!=null && ipChanged &&
@@ -108,21 +108,21 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 					boolean disableUndo = Prefs.disableUndo || (flags&PlugInFilter.NO_UNDO)!=0;
 					if (!disableUndo) {
 						ip.snapshot();
-						snapshotPixels = ip.getSnapshotPixels();
+						snapshotDone = true;
 					}
 				}
-				processOneImage(ip, fp, snapshotPixels);	// may also set class variable snapshotPixels
+				processOneImage(ip, fp, snapshotDone);		// may also set snapShotDone
 				if ((flags&PlugInFilter.NO_CHANGES)==0) {	// (filters doing no modifications don't change undo status)
-					if (snapshotPixels != null) {
-						ip.setSnapshotPixels(snapshotPixels);
+					if (snapshotDone)
 						Undo.setup(Undo.FILTER, imp);
-					} else
+					else
 						Undo.reset();
 				}
 				if ((flags&PlugInFilter.NO_CHANGES)==0&&(flags&PlugInFilter.KEEP_THRESHOLD)==0)
 					ip.resetBinaryThreshold();
 			} else {  //  stack
-				Undo.reset();	 // no undo for processing a complete stack
+				if ((flags&PlugInFilter.NO_UNDO_RESET)==0)
+					Undo.reset();	 // no undo for processing a complete stack
 				IJ.resetEscape();
 				int slicesToDo = processedAsPreview!=0 ? slices-1 : slices;
 				nPasses *= slicesToDo;
@@ -194,7 +194,7 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 				announceSliceNumber(i);
 				ip.setPixels(stack.getPixels(i));
 				ip.setSliceNumber(i);
-				processOneImage(ip, fp, null);
+				processOneImage(ip, fp, false);
 				if (IJ.escapePressed()) {IJ.beep(); break;}
 			}
 		}
@@ -226,21 +226,23 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 	 * Process a single image with the PlugInFilter.
 	 * @param ip		The image data that should be processed
 	 * @param fp		A Floatprocessor as a target for conversion to Float. May be null.
-	 * @param snapshotPixels Valid snapshotPixels for the current ImageProcessor (null when processing a stack)
-	 * Class variables used: flags (input), snapshotPixels (set if a snapshot of ip
+	 * @param snapshotDone Whether a snapshot of ip has been be taken previously. if
+	 * snapshotDone is true, the snapshot needed for the SUPPORTS_MASKING or SNAPSHOT
+	 * flags of the filter is not created any more.
+	 * Class variables used: flags (input), snapshotDone (set if a snapshot of ip
 	 * is taken), ipChanged (set if ip was probably changed).
 	 */
-	private void processOneImage(ImageProcessor ip, FloatProcessor fp, Object snapshotPixels) {
+	private void processOneImage(ImageProcessor ip, FloatProcessor fp, boolean snapshotDone) {
 		if ((flags&PlugInFilter.PARALLELIZE_IMAGES)!=0) {
-			processImageUsingThreads(ip, fp, snapshotPixels);
+			processImageUsingThreads(ip, fp, snapshotDone);
 			return;
 		}
 		Thread thread = Thread.currentThread();
 		boolean convertToFloat = (flags&PlugInFilter.CONVERT_TO_FLOAT)!=0 && !(ip instanceof FloatProcessor);
 		boolean doMasking = (flags&PlugInFilter.SUPPORTS_MASKING)!=0 && ip.getMask() != null;
-		if (snapshotPixels==null && (doMasking || ((flags&PlugInFilter.SNAPSHOT)!=0) && !convertToFloat)) {
+		if (!snapshotDone && (doMasking || ((flags&PlugInFilter.SNAPSHOT)!=0) && !convertToFloat)) {
 			ip.snapshot();
-			this.snapshotPixels = ip.getSnapshotPixels();
+			this.snapshotDone = true;
 		}
 		if (convertToFloat) {
 			for (int i=0; i<ip.getNChannels(); i++) {
@@ -260,28 +262,24 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 			}
 		} else {
 			if ((flags&PlugInFilter.NO_CHANGES)==0) ipChanged = true;
-				if (doStack) IJ.showProgress(pass/(double)nPasses);
+				if (doStack) IJ.showProgress(pass/(double)nPasses); 
 			((PlugInFilter)theFilter).run(ip);
 			pass++;
 		}
-
 		if (thread.isInterrupted()) return;
-		if (doMasking) {
-			if (snapshotPixels != null)
-				ip.setSnapshotPixels(snapshotPixels); //in case something has intervened and destroyed the snapshot
+		if (doMasking)
 			ip.reset(ip.getMask());	 //restore image outside irregular roi
-		}
    }
 
-	private void processImageUsingThreads(ImageProcessor ip, FloatProcessor fp, Object snapshotPixels) {
+	private void processImageUsingThreads(ImageProcessor ip, FloatProcessor fp, boolean snapshotDone) {
 		if (IJ.debugMode)
 			IJ.log("using threads: "+ip.getNChannels());
 		Thread thread = Thread.currentThread();
 		boolean convertToFloat = (flags&PlugInFilter.CONVERT_TO_FLOAT)!=0 && !(ip instanceof FloatProcessor);
 		boolean doMasking = (flags&PlugInFilter.SUPPORTS_MASKING)!=0 && ip.getMask() != null;
-		if (snapshotPixels==null && (doMasking || ((flags&PlugInFilter.SNAPSHOT)!=0) && !convertToFloat)) {
+		if (!snapshotDone && (doMasking || ((flags&PlugInFilter.SNAPSHOT)!=0) && !convertToFloat)) {
 			ip.snapshot();
-			this.snapshotPixels = ip.getSnapshotPixels();
+			this.snapshotDone = true;
 		}
 		if (convertToFloat) {
 			for (int i=0; i<ip.getNChannels(); i++) {
@@ -300,15 +298,12 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 			}
 		} else {
 			if ((flags&PlugInFilter.NO_CHANGES)==0) ipChanged = true;
-				if (doStack) IJ.showProgress(pass/(double)nPasses);
+				if (doStack) IJ.showProgress(pass/(double)nPasses); 
 			processChannelUsingThreads(ip);
 		}
 		if (thread.isInterrupted()) return;
-		if (doMasking) {
-			if (snapshotPixels != null)
-				ip.setSnapshotPixels(snapshotPixels);
+		if (doMasking)
 			ip.reset(ip.getMask());	 //restore image outside irregular roi
-		}
 	}
 
 	/** process an image or a single color channel of an RGB image by splitting
@@ -370,7 +365,7 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 				((Thread)en.nextElement()).join();
 			} catch (Exception e){}
 	}
-
+ 
 	/** test whether an ImagePlus can be processed based on the flags specified
 	 *	and display an error message if not.
 	 */
@@ -477,7 +472,7 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 			}
 		}
 	}
-
+			
 	/** The background thread for preview */
 	private void runPreview() {
 		if (IJ.debugMode)
@@ -489,9 +484,9 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 		FloatProcessor fp = null;
 		prepareProcessor(ip, imp);
 		announceSliceNumber(imp.getCurrentSlice());
-		if (snapshotPixels==null && (flags&PlugInFilter.NO_CHANGES)==0) {
+		if (!snapshotDone && (flags&PlugInFilter.NO_CHANGES)==0) {
 			ip.snapshot();
-			snapshotPixels = ip.getSnapshotPixels();
+			snapshotDone = true;
 		}
 		boolean previewDataOk = false;
 		while(bgPreviewOn) {
@@ -504,10 +499,8 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 					else
 						ip.setRoi((Roi)null);
 				}
-				if (ipChanged) {					// restore image data if necessary
-					ip.setSnapshotPixels(snapshotPixels);
+				if (ipChanged)						// restore image data if necessary
 					ip.reset();
-				}
 				ipChanged = false;
 				previewDataOk = false;
 				long startTime = System.currentTimeMillis();
@@ -517,7 +510,7 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 				if (thread.isInterrupted())
 					break interruptable;
 				//IJ.log("process preview start now");
-				processOneImage(ip, fp, snapshotPixels); // P R O C E S S   (sets ipChanged)
+				processOneImage(ip, fp, true);		// P R O C E S S   (sets ipChanged)
 				IJ.showProgress(1.0);
 				if (thread.isInterrupted())
 					break interruptable;
@@ -544,7 +537,6 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 		if (!previewDataOk || !bgKeepPreview) {		//no need to keep the result
 			imp.setRoi(originalRoi);				//restore roi
 			if (ipChanged) {						//revert the image data
-				ip.setSnapshotPixels(snapshotPixels);
 				ip.reset();
 				ipChanged = false;
 			}
@@ -628,5 +620,5 @@ public class PlugInFilterRunner implements Runnable, DialogListener {
 		}
 		return true;
 	}
-
+	
 }

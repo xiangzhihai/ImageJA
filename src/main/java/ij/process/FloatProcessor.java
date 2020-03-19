@@ -14,6 +14,7 @@ public class FloatProcessor extends ImageProcessor {
 	private float[] snapshotPixels = null;
 	private float fillColor =  Float.MAX_VALUE;
 	private boolean fixedScale = false;
+	private float bgValue;
 
 	/** Creates a new FloatProcessor using the specified pixel array. */
 	public FloatProcessor(int width, int height, float[] pixels) {
@@ -106,15 +107,16 @@ public class FloatProcessor extends ImageProcessor {
 		minMaxSet = true;
 	}
 
-	/**
-	Sets the min and max variables that control how real
-	pixel values are mapped to 0-255 screen values. Use
-	resetMinAndMax() to enable auto-scaling;
-	@see ij.plugin.frame.ContrastAdjuster 
+	/** Sets the min and max variables that control how real
+	 * pixel values are mapped to 0-255 screen values. Use
+	 * resetMinAndMax() to enable auto-scaling;
+	 * @see ij.plugin.frame.ContrastAdjuster 
 	*/
 	public void setMinAndMax(double minimum, double maximum) {
-		if (minimum==0.0 && maximum==0.0)
-			{resetMinAndMax(); return;}
+		if (minimum==0.0 && maximum==0.0) {
+			resetMinAndMax();
+			return;
+		}
 		min = (float)minimum;
 		max = (float)maximum;
 		fixedScale = true;
@@ -181,17 +183,21 @@ public class FloatProcessor extends ImageProcessor {
 			pixels8 = new byte[size];
 		double value;
 		int ivalue;
-		double min2 = getMin();
-		double max2 = getMax();
-		double scale = 255.0/(max2-min2);
-		int maxValue = thresholding?254:255;
+		double min2 = getMin(), max2=getMax();
+		int maxValue = 255;
+		double scale = 256.0/(max2-min2);
+		if (thresholding) {
+			maxValue = 254;
+			scale = 255.0/(max2-min2);
+		}
 		for (int i=0; i<size; i++) {
 			value = pixels[i]-min2;
 			if (value<0.0) value=0.0;
-			ivalue = (int)(value*scale+0.5);
+			ivalue = (int)((value*scale)+0.5f);
 			if (ivalue>maxValue) ivalue = maxValue;
 			pixels8[i] = (byte)ivalue;
 		}
+		//if (ij.IJ.debugMode) new ij.ImagePlus("pixels8",new ByteProcessor(width,height,pixels8).duplicate()).show();
 		return pixels8;
 	}
 	
@@ -385,7 +391,7 @@ public class FloatProcessor extends ImageProcessor {
 		if (x>=0 && x<width && y>=0 && y<height)
 			return pixels[y*width + x];
 		else
-			return Float.NaN;
+			return 0f;
 	}
 
 	/** Draws a pixel in the current foreground color. */
@@ -701,7 +707,7 @@ public class FloatProcessor extends ImageProcessor {
 							pixels[index++] = pixels2[width*iys+ixs];
 						}
 					} else
-						pixels[index++] = 0;
+						pixels[index++] = bgValue;
 				}
 			}
 		}
@@ -1010,22 +1016,19 @@ public class FloatProcessor extends ImageProcessor {
 			fillColor = 0f;
 		else
 			fillColor = (float)(getMin() + (getMax()-getMin())*(bestIndex/255.0));
-		fillValueSet = true;
 	}
 	
 	/** Sets the default fill/draw value. */
 	public void setValue(double value) {
 		fillColor = (float)value;
-		fillValueSet = true;
 	}
 
-	/** Does nothing. The rotate() and scale() methods always zero fill. */
 	public void setBackgroundValue(double value) {
+		bgValue = (float)value;
 	}
 
-	/** Always returns 0. */
 	public double getBackgroundValue() {
-		return 0.0;
+		return bgValue;
 	}
 
 	public void setLutAnimation(boolean lutAnimation) {

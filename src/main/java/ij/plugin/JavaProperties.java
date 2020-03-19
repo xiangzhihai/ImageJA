@@ -64,12 +64,6 @@ public class JavaProperties implements PlugIn {
 		String userDir = System.getProperty("user.dir");
 		String userHome = System.getProperty("user.home");
 		String osName = System.getProperty("os.name");
-		String path = Prefs.getCustomPropsPath();
-		if (path!=null)
-			list.add("  *Custom properties*: "+path);
-		path = Prefs.getCustomPrefsPath();
-		if (path!=null)
-			list.add("  *Custom preferences*: "+path);
 		list.add("  IJ.getVersion: "+IJ.getVersion());
 		list.add("  IJ.getFullVersion: "+IJ.getFullVersion());
 		list.add("  IJ.javaVersion: "+IJ.javaVersion());
@@ -89,10 +83,9 @@ public class JavaProperties implements PlugIn {
 		list.add("  IJ.getDir(\"default\"): "+ IJ.getDir("default"));
 		list.add("  IJ.getDir(\"image\"): "+ IJ.getDir("image"));
 		list.add("");
-		
 		list.add("  Menus.getPlugInsPath: "+Menus.getPlugInsPath());
 		list.add("  Menus.getMacrosPath: "+Menus.getMacrosPath());
-		list.add("  Prefs.getImageJDir: "+Prefs.getImageJDir());		
+		list.add("  Prefs.getImageJDir: "+Prefs.getImageJDir());	
 		list.add("  Prefs.getThreads: "+Prefs.getThreads()+cores());	
 		list.add("  Prefs.open100Percent: "+Prefs.open100Percent);		
 		list.add("  Prefs.blackBackground: "+Prefs.blackBackground);		
@@ -112,16 +105,14 @@ public class JavaProperties implements PlugIn {
 		list.add("  Current dir: "+OpenDialog.getDefaultDirectory());
 		list.add("  Sample images dir: "+Prefs.getImagesURL());
 		list.add("  Memory in use: "+IJ.freeMemory());	
-		Rectangle s1 = GUI.getScreenBounds(); // primary screen
-		Rectangle s2 = GUI.getScreenBounds(IJ.getInstance()); // screen with "ImageJ" window
-		if (s1.equals(s2))
-			list.add("  Screen size: " + s1.width + "x" + s1.height);
-		else {
-			list.add("  Size of primary screen: " + s1.width + "x" + s1.height);
-			list.add("  Size of \"ImageJ\" screen: " + s2.width + "x" + s2.height);
-		}
+		Dimension d = IJ.getScreenSize();
+		list.add("  Screen size: " + d.width + "x" + d.height);
 		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-		list.add("  Max window bounds: " + toString(GUI.getMaxWindowBounds(IJ.getInstance())));
+		String b1 = toString(GUI.getMaxWindowBounds());
+		String b2 = toString(ge.getMaximumWindowBounds());
+		if (!b2.equals(b1))
+			b1 += " (" + b2 + ")";
+		list.add("  Max window bounds: " + b1);
 		listMonitors(ge, list);
 		System.gc();
 		doFullDump();
@@ -150,6 +141,9 @@ public class JavaProperties implements PlugIn {
 			}
 		}
 		if (n>1) {
+			Rectangle ub = GUI.getUnionOfBounds();
+			if (ub!=null)
+				list.add("  Union of bounds: " + toString(ub));
 			for (int i=0; i<n; i++)
 				list.add("  Monitor"+(i+1)+": " + str[i]);
 		}

@@ -69,7 +69,6 @@ public class RoiProperties {
 		Color strokeColor = roi.getStrokeColor();
 		Color fillColor = roi.getFillColor();
 		double strokeWidth = roi.getStrokeWidth();
-		double strokeWidth2 = strokeWidth;
 		boolean isText = roi instanceof TextRoi;
 		boolean isLine = roi.isLine();
 		boolean isPoint = roi instanceof PointRoi;
@@ -82,16 +81,13 @@ public class RoiProperties {
 			strokeWidth = font.getSize();
 			angle = troi.getAngle();
 			justification = troi.getJustification();
-			antialias = troi.getAntiAlias();
+			antialias = troi.getAntialiased();
 		}
 		String position = ""+roi.getPosition();
 		if (roi.hasHyperStackPosition())
 			position =  roi.getCPosition() +","+roi.getZPosition()+","+ roi.getTPosition();
 		if (position.equals("0"))
 			position = "none";
-		String group = ""+roi.getGroup();
-		if (group.equals("0"))
-			group = "none";
 		String linec = Colors.colorToString(strokeColor);
 		String fillc = Colors.colorToString(fillColor);
 		if (IJ.isMacro()) {
@@ -102,12 +98,7 @@ public class RoiProperties {
 		GenericDialog gd = new GenericDialog(title);
 		if (showName) {
 			gd.addStringField(nameLabel, name, 15);
-			String label = "Position:";
-			ImagePlus imp = WindowManager.getCurrentImage();
-			if (position.contains(",") || (imp!=null&&imp.isHyperStack()))
-				label = "Position (c,s,f):";
-			gd.addStringField(label, position);
-			gd.addStringField("Group:", group);
+			gd.addStringField("Position:", position);
 		}
 		if (isText) {
 			gd.addStringField("Stroke color:", linec);
@@ -124,7 +115,6 @@ public class RoiProperties {
 				gd.addNumericField("Width:", strokeWidth, digits);
 			}
 		}
-
 		if (!isLine) {
 			if (isPoint) {
 				int index = ((PointRoi)roi).getPointType();
@@ -161,10 +151,11 @@ public class RoiProperties {
 		if (showListCoordinates) {
 			if ((roi instanceof PointRoi) && Toolbar.getMultiPointMode())
 				showPointCounts = true;
+			int n = roi.getFloatPolygon().npoints;
 			if (showPointCounts)
 				gd.addCheckbox("Show point counts (shortcut: alt+y)", listCoordinates);
 			else
-				gd.addCheckbox("List coordinates ("+roi.size()+")", listCoordinates);
+				gd.addCheckbox("List coordinates ("+n+")", listCoordinates);
 			if (nProperties>0)
 				gd.addCheckbox("List properties ("+nProperties+")", listProperties);
 			else {
@@ -172,22 +163,20 @@ public class RoiProperties {
 				gd.addMessage("No properties");
 			}
 		}
-		if (showName && "".equals(name) && "none".equals(position) && "none".equals(group) && "none".equals(fillc))
+		if (showName && "".equals(name) && "none".equals(position) && "none".equals(fillc))
 			gd.setSmartRecording(true);
 		gd.showDialog();
 		if (gd.wasCanceled())
 			return false;
 		String position2 = "";
-		String group2 = "";
 		if (showName) {
 			name = gd.getNextString();
 			if (!isRange) roi.setName(name.length()>0?name:null);
 			position2 = gd.getNextString();
-			group2 = gd.getNextString();
 		}
 		linec = gd.getNextString();
 		if (!isPoint)
-			strokeWidth2 = gd.getNextNumber();
+			strokeWidth = gd.getNextNumber();
 		if (isText) {
 			angle = gd.getNextNumber();
 			justification = gd.getNextChoiceIndex();
@@ -236,20 +225,18 @@ public class RoiProperties {
 		if (isText) {
 			TextRoi troi = (TextRoi)roi;
 			Font font = troi.getCurrentFont();
-			if (strokeWidth2!=strokeWidth) {
-				font = new Font(font.getName(), font.getStyle(), (int)strokeWidth2);
+			if ((int)strokeWidth!=font.getSize()) {
+				font = new Font(font.getName(), font.getStyle(), (int)strokeWidth);
 				troi.setCurrentFont(font);
 			}
 			troi.setAngle(angle);
 			if (justification!=troi.getJustification())
 				troi.setJustification(justification);
-			troi.setAntiAlias(antialias);
-		} else if (strokeWidth2!=strokeWidth)
-			roi.setStrokeWidth((float)strokeWidth2);
-		if (showName) {
+			troi.setAntialiased(antialias);
+		} else
+			roi.setStrokeWidth((float)strokeWidth);
+		if (showName)
 			setPosition(roi, position, position2);
-			setGroup(roi, group, group2);
-		}
 		roi.setStrokeColor(strokeColor);
 		roi.setFillColor(fillColor);
 		if (newOverlay) roi.setName("new-overlay");
@@ -259,12 +246,11 @@ public class RoiProperties {
 			Roi[] rois = overlay.toArray();
 			for (int i=0; i<rois.length; i++) {
 				rois[i].setStrokeColor(strokeColor);
-				if (strokeWidth2!=strokeWidth)
-					rois[i].setStrokeWidth((float)strokeWidth2);
+				rois[i].setStrokeWidth((float)strokeWidth);
 				rois[i].setFillColor(fillColor);
 			}
 			imp.draw();
-			imp.getProcessor(); // needed for correct recordering
+			imp.getProcessor(); // needed for corect recordering
 		}
 		if (listCoordinates) {
 			if (showPointCounts && (roi instanceof PointRoi))
@@ -304,18 +290,6 @@ public class RoiProperties {
 			return;
 		}
 	}
-	
-	private void setGroup(Roi roi, String group1, String group2) {
-		if (group1.equals(group2))
-			return;
-		if (group2.equals("none") || group2.equals("0")) {
-			roi.setGroup(0);
-			return;
-		}
-		double group = Tools.parseDouble(group2);
-		if (!Double.isNaN(group))
-			roi.setGroup((int)group);
-	}
 		
 	public boolean showImageDialog(String name) {
 		ImageRoi iRoi = (ImageRoi)roi;
@@ -345,17 +319,18 @@ public class RoiProperties {
 		if (roi==null) return;
 		boolean allIntegers = true;
 		FloatPolygon fp = roi.getFloatPolygon();
+		//FloatPolygon fp  = ((PolygonRoi)roi).getNonSplineFloatCoordinates();
 		ImagePlus imp = roi.getImage();
 		String title = "Coordinates";
 		if (imp!=null) {
 			Calibration cal = imp.getCalibration();
-			int height = imp.getHeight();
-			for (int i=0; i<fp.npoints; i++) {
-				fp.xpoints[i] = (float)cal.getX(fp.xpoints[i]);
-				fp.ypoints[i] = (float)cal.getY(fp.ypoints[i], height);
-			}
-			if (cal.pixelWidth!=1.0 || cal.pixelHeight!=1.0)
+			if (cal.pixelWidth!=1.0 || cal.pixelHeight!=1.0) {
+				for (int i=0; i<fp.npoints; i++) {
+					fp.xpoints[i] *= cal.pixelWidth;
+					fp.ypoints[i] *= cal.pixelHeight;
+				}
 				allIntegers = false;
+			}
 			title = imp.getTitle();
 		}
 		if (allIntegers) {

@@ -120,7 +120,7 @@ import java.util.Vector;
 		
 	boolean showDialog() {
 		validateFormat();
-		gd = NonBlockingGenericDialog.newDialog("Batch Process");
+		gd = new NonBlockingGenericDialog("Batch Process");
 		addPanels(gd);
 		gd.setInsets(15, 0, 5);
 		gd.addChoice("Output_format:", formats, format);
@@ -148,16 +148,16 @@ import java.util.Vector;
 	
 	void processVirtualStack(String outputPath) {
 		ImageStack stack = virtualStack.getStack();
-		int n = stack.size();
+		int n = stack.getSize();
 		int index = 0;
 		for (int i=1; i<=n; i++) {
 			if (IJ.escapePressed()) break;
 			IJ.showProgress(i, n);
 			ImageProcessor ip = stack.getProcessor(i);
 			if (ip==null) return;
-			ImagePlus imp = new ImagePlus(i+"/"+stack.size(), ip);
+			ImagePlus imp = new ImagePlus(i+"/"+stack.getSize(), ip);
 			if (!macro.equals("")) {
-				if (!runMacro("i="+(index++)+";"+"n="+stack.size()+";"+macro, imp))
+				if (!runMacro("i="+(index++)+";"+"n="+stack.getSize()+";"+macro, imp))
 					break;
 			}
 			if (saveOutput && !outputPath.equals("")) {

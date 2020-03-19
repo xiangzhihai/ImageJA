@@ -161,7 +161,6 @@ public class PlotCanvas extends ImageCanvas {
 		setSize(width, height);
 		oldWidth = width;
 		oldHeight = height;
-		((PlotWindow)win).canvasResized();
 	}
 
 	/** The image of a PlotCanvas is always shown at 100% magnification unless the plot is frozen */

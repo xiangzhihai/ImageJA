@@ -36,7 +36,6 @@ public class Prefs {
     public static final String DIV_BY_ZERO_VALUE = "div-by-zero";
     public static final String NOISE_SD = "noise.sd";
     public static final String MENU_SIZE = "menu.size";
-    public static final String GUI_SCALE = "gui.scale";
     public static final String THREADS = "threads";
 	public static final String KEY_PREFIX = ".";
  
@@ -57,8 +56,7 @@ public class Prefs {
 		SUBPIXEL_RESOLUTION=1<<2, ENHANCED_LINE_TOOL=1<<3, SKIP_RAW_DIALOG=1<<4,
 		REVERSE_NEXT_PREVIOUS_ORDER=1<<5, AUTO_RUN_EXAMPLES=1<<6, SHOW_ALL_POINTS=1<<7,
 		DO_NOT_SAVE_WINDOW_LOCS=1<<8, JFILE_CHOOSER_CHANGED=1<<9,
-		CANCEL_BUTTON_ON_RIGHT=1<<10, IGNORE_RESCALE_SLOPE=1<<11,
-		NON_BLOCKING_DIALOGS=1<<12;
+		CANCEL_BUTTON_ON_RIGHT=1<<10;
 	public static final String OPTIONS2 = "prefs.options2";
     
 	/** file.separator system property */
@@ -119,8 +117,6 @@ public class Prefs {
 	public static boolean multiPointMode;
 	/** Open DICOMs as 32-bit float images */
 	public static boolean openDicomsAsFloat;
-	/** Ignore Rescale Slope when opening DICOMs */
-	public static boolean ignoreRescaleSlope;
 	/** Plot rectangular selectons vertically */
 	public static boolean verticalProfile;
 	/** Rotate YZ orthogonal views 90 degrees */
@@ -171,7 +167,7 @@ public class Prefs {
 	public static boolean splineFitLines;
 	/** Enable this option to workaround a bug with some Linux window
 		managers that causes windows to wander down the screen. */
-	public static boolean doNotSaveWindowLocations;
+	public static boolean doNotSaveWindowLocations = true;
 	/** Use JFileChooser setting changed/ */
 	public static boolean jFileChooserSettingChanged;
 	/** Convert tiff units to microns if pixel width is less than 0.0001 cm. */
@@ -182,76 +178,51 @@ public class Prefs {
 	public static boolean closingAll;
 	/** Dialog "Cancel" button is on right on Linux */
 	public static boolean dialogCancelButtonOnRight;
-<<<<<<< HEAD
-<<<<<<< HEAD
 	/** Support TRANSFORM Undo in macros */
 	public static boolean supportMacroUndo;
-	/** Use NonBlockingGenericDialogs in filters */	
-	public static boolean nonBlockingFilterDialogs;
-	//Save location of moved image windows */	
-	//public static boolean saveImageLocation = true;
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
-=======
->>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 
 	static boolean commandLineMacro;
 	static Properties ijPrefs = new Properties();
 	static Properties props = new Properties(ijPrefs);
 	static String prefsDir;
 	static String imagesURL;
-	static String ImageJDir;
+	static String homeDir; // ImageJ folder
 	static int threads;
 	static int transparentIndex = -1;
 	private static boolean resetPreferences;
-	private static double guiScale = 1.0;
-	private static Properties locKeys = new Properties();
-	private static String propertiesPath; // location of custom IJ_Props.txt
-	private static String preferencesPath; // location of custom IJ_Prefs.txt
 
-	/** Finds and loads the configuration file ("IJ_Props.txt")
-	 * and the preferences file ("IJ_Prefs.txt").
-	 * @return	an error message if "IJ_Props.txt" not found.
+	/** Finds and loads the ImageJ configuration file, "IJ_Props.txt".
+		@return	an error message if "IJ_Props.txt" not found.
 	*/
 	public static String load(Object ij, Applet applet) {
-		if (ImageJDir==null)
-			ImageJDir = System.getProperty("user.dir");
-		InputStream f = null;
-		try { // Look for IJ_Props.txt in ImageJ folder
-			f = new FileInputStream(ImageJDir+"/"+PROPS_NAME);
-			propertiesPath = ImageJDir+"/"+PROPS_NAME;
-		} catch (FileNotFoundException e) {
-			f = null;
-		}
-		if (f==null) {
-			// Look in ij.jar if not found in ImageJ folder
-			f = ij.getClass().getResourceAsStream("/"+PROPS_NAME);
-		}			
+		InputStream f = ij.getClass().getResourceAsStream("/"+PROPS_NAME);
 		if (applet!=null)
 			return loadAppletProps(f, applet);
-		if (f==null)
-			return PROPS_NAME+" not found in ij.jar or in "+ImageJDir;
-		f = new BufferedInputStream(f);
-		try {
-			props.load(f);
-			f.close();
-		} catch (IOException e) {
-			return("Error loading "+PROPS_NAME);
+		if (homeDir==null)
+			homeDir = System.getProperty("user.dir");
+		if (f==null) {
+			try {f = new FileInputStream(homeDir+"/"+PROPS_NAME);}
+			catch (FileNotFoundException e) {f=null;}
 		}
+		if (f==null)
+			return PROPS_NAME+" not found in ij.jar or in "+homeDir;
+		f = new BufferedInputStream(f);
+		try {props.load(f); f.close();}
+		catch (IOException e) {return("Error loading "+PROPS_NAME);}
 		imagesURL = props.getProperty("images.location");
 		loadPreferences();
 		loadOptions();
-		guiScale = get(GUI_SCALE, 1.0);
 		return null;
 	}
 
 	/*
-	static void dumpPrefs() {
-		System.out.println("");
+	static void dumpPrefs(String title) {
+		IJ.log("");
+		IJ.log(title);
 		Enumeration e = ijPrefs.keys();
 		while (e.hasMoreElements()) {
 			String key = (String) e.nextElement();
-			System.out.println(key+": "+ijPrefs.getProperty(key));
+			IJ.log(key+": "+ijPrefs.getProperty(key));
 		}
 	}
 	*/
@@ -285,14 +256,14 @@ public class Prefs {
 	/** Obsolete, replaced by getImageJDir(), which, unlike this method, 
 		returns a path that ends with File.separator. */
 	public static String getHomeDir() {
-		return ImageJDir;
+		return homeDir;
 	}
 
 	/** Returns the path, ending in File.separator, to the ImageJ directory. */
 	public static String getImageJDir() {
 		String path = Menus.getImageJPath();
 		if (path==null)
-			return ImageJDir + File.separator;
+			return homeDir + File.separator;
 		else
 			return path;
 	}
@@ -301,22 +272,12 @@ public class Prefs {
 		preferences file (IJPrefs.txt) is saved. */
 	public static String getPrefsDir() {
 		if (prefsDir==null) {
-			if (ImageJDir==null)
-				ImageJDir = System.getProperty("user.dir");
-			File f = new File(ImageJDir+File.separator+PREFS_NAME);
-			if (f.exists()) {
-				prefsDir = ImageJDir;
-				preferencesPath = ImageJDir+"/"+PREFS_NAME;
-			}
-			//System.out.println("getPrefsDir: "+f+"  "+prefsDir);
-			if (prefsDir==null) {
-				String dir = System.getProperty("user.home");
-				if (IJ.isMacOSX())
-					dir += "/Library/Preferences";
-				else
-					dir += File.separator+".imagej";
-				prefsDir = dir;
-			}
+			String dir = System.getProperty("user.home");
+			if (IJ.isMacOSX())
+				dir += "/Library/Preferences";
+			else
+				dir += File.separator+".imagej";
+			prefsDir = dir;
 		}
 		return prefsDir;
 	}
@@ -325,7 +286,7 @@ public class Prefs {
 	static void setHomeDir(String path) {
 		if (path.endsWith(File.separator))
 			path = path.substring(0, path.length()-1);
-		ImageJDir = path;
+		homeDir = path;
 	}
 
 	/** Returns the default directory, if any, or null. */
@@ -336,7 +297,7 @@ public class Prefs {
 			return getString(DIR_IMAGE);
 	}
 
-	/** Finds a string in IJ_Props or IJ_Prefs.txt. */
+	/** Finds an string in IJ_Props or IJ_Prefs.txt. */
 	public static String getString(String key) {
 		return props.getProperty(key);
 	}
@@ -403,13 +364,13 @@ public class Prefs {
 		return separator;
 	}
 
-	/** Opens the ImageJ preferences file ("IJ_Prefs.txt") file. */
+	/** Opens the IJ_Prefs.txt file. */
 	static void loadPreferences() {
 		String path = getPrefsDir()+separator+PREFS_NAME;
 		boolean ok =  loadPrefs(path);
 		if (!ok) { // not found
 			if (IJ.isWindows())
-				path = ImageJDir +separator+PREFS_NAME;
+				path = homeDir +separator+PREFS_NAME; // ImageJ folder
 			else
 				path = System.getProperty("user.home")+separator+PREFS_NAME; //User's home dir
 			ok = loadPrefs(path);
@@ -535,8 +496,6 @@ public class Prefs {
 		doNotSaveWindowLocations = (options2&DO_NOT_SAVE_WINDOW_LOCS)!=0;
 		jFileChooserSettingChanged = (options2&JFILE_CHOOSER_CHANGED)!=0;
 		dialogCancelButtonOnRight = (options2&CANCEL_BUTTON_ON_RIGHT)!=0;
-		ignoreRescaleSlope = (options2&IGNORE_RESCALE_SLOPE)!=0;
-		nonBlockingFilterDialogs = (options2&NON_BLOCKING_DIALOGS)!=0;
 	}
 
 	static void saveOptions(Properties prefs) {
@@ -565,9 +524,7 @@ public class Prefs {
 			+ (autoRunExamples?AUTO_RUN_EXAMPLES:0) + (showAllPoints?SHOW_ALL_POINTS:0)
 			+ (doNotSaveWindowLocations?DO_NOT_SAVE_WINDOW_LOCS:0)
 			+ (jFileChooserSettingChanged?JFILE_CHOOSER_CHANGED:0)
-			+ (dialogCancelButtonOnRight?CANCEL_BUTTON_ON_RIGHT:0)
-			+ (ignoreRescaleSlope?IGNORE_RESCALE_SLOPE:0)
-			+ (nonBlockingFilterDialogs?NON_BLOCKING_DIALOGS:0);
+			+ (dialogCancelButtonOnRight?CANCEL_BUTTON_ON_RIGHT:0);
 		prefs.put(OPTIONS2, Integer.toString(options2));
 	}
 
@@ -645,7 +602,7 @@ public class Prefs {
 		 file as a string using the keyword <code>key</code>. */
 	public static void saveLocation(String key, Point loc) {
 		if (!doNotSaveWindowLocations)
-			set(key, loc!=null?loc.x+","+loc.y:null);
+			set(key, loc.x+","+loc.y);
 	}
 
 	/** Uses the keyword <code>key</code> to retrieve a location
@@ -661,20 +618,15 @@ public class Prefs {
 		double yloc = Tools.parseDouble(value.substring(index+1));
 		if (Double.isNaN(yloc)) return null;
 		Point p = new Point((int)xloc, (int)yloc);
-		Rectangle bounds = GUI.getScreenBounds(p); // get bounds of screen that contains p
-		if (bounds!=null && p.x+100<=bounds.x+bounds.width && p.y+ 40<=bounds.y+bounds.height) {
-			if (locKeys.get(key)==null) { // first time for this key? 
-				locKeys.setProperty(key, "");
-				Rectangle primaryScreen = GUI.getMaxWindowBounds();
-				ImageJ ij = IJ.getInstance();
-				Point ijLoc = ij!=null?ij.getLocation():null;
-				//System.out.println("getLoc: "+key+" "+(ijLoc!=null&&primaryScreen.contains(ijLoc)) + "  "+!primaryScreen.contains(p));
-				if ((ijLoc!=null&&primaryScreen.contains(ijLoc)) && !primaryScreen.contains(p))
-					return null; // return null if "ImageJ" window on primary screen and this location is not
-			}
-			return p;
-		} else
+		Dimension screen = null;
+		if (IJ.debugMode)
+			screen = Toolkit.getDefaultToolkit().getScreenSize();
+		else
+			screen = IJ.getScreenSize();
+		if (p.x>screen.width-100 || p.y>screen.height-40)
 			return null;
+		else
+			return p;
 	}
 
 	/** Save plugin preferences. */
@@ -730,29 +682,5 @@ public class Prefs {
 		return get("options.ext", ".csv");
 	}
 		
-	/** Sets the GenericDialog and Command Finder text scale (0.5 to 3.0). */
-	public static void setGuiScale(double scale) {
-		if (scale>=0.5 && scale<=3.0) {
-			guiScale = scale;
-			set(GUI_SCALE, guiScale);
-			Roi.resetDefaultHandleSize();
-		}
-	}
-
-	/** Returns the GenericDialog and Command Finder text scale. */
-	public static double getGuiScale() {
-		return guiScale;
-	}
-
-	/** Returns the custom properties (IJ_Props.txt) file path. */
-	public static String getCustomPropsPath() {
-		return propertiesPath;
-	}
-
-	/** Returns the custom preferences (IJ_Prefs.txt) file path. */
-	public static String getCustomPrefsPath() {
-		return preferencesPath;
-	}
-
 }
 

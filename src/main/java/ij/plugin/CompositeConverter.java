@@ -6,7 +6,6 @@ import java.awt.*;
 import java.awt.image.*;
 import ij.plugin.frame.ContrastAdjuster;
 import ij.macro.Interpreter;
-import ij.plugin.frame.Recorder;
 
 /** This plugin implements the Image/Color/Make Composite command. */
 public class CompositeConverter implements PlugIn {
@@ -73,11 +72,9 @@ public class CompositeConverter implements PlugIn {
 	}
 	
 	public static ImagePlus makeComposite(ImagePlus imp) {
-		if (imp.getBitDepth()==24) {
-			if (Recorder.scriptMode())
-				Recorder.recordCall("ImagePlus", "imp2 = CompositeConverter.makeComposite(imp);");
+		if (imp.getBitDepth()==24)
 			return convertRGBToComposite(imp);
-		} else
+		else
 			return null;
 	}
 	

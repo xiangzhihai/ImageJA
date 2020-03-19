@@ -13,7 +13,6 @@ public class Filters implements PlugInFilter {
 	private ImagePlus imp;
 	private int slice;
 	private boolean canceled;
-	private boolean noRoi;
 
 	public int setup(String arg, ImagePlus imp) {
 		this.arg = arg;
@@ -21,7 +20,7 @@ public class Filters implements PlugInFilter {
 		if (imp!=null) {
 			Roi roi = imp.getRoi();
 			if (roi!=null && !roi.isArea())
-				noRoi = true;
+				imp.deleteRoi(); // ignore any line selection
 		}
 		int flags = IJ.setupDialog(imp, DOES_ALL-DOES_8C+SUPPORTS_MASKING);
 		if ((flags&PlugInFilter.DOES_STACKS)!=0 && imp.getType()==ImagePlus.GRAY16 && imp.getStackSize()>1 && arg.equals("invert")) {
@@ -32,9 +31,6 @@ public class Filters implements PlugInFilter {
 	}
 
 	public void run(ImageProcessor ip) {
-	
-		if (noRoi)
-			ip.resetRoi();
 	
 		if (arg.equals("invert")) {
 	 		ip.invert();
@@ -93,7 +89,7 @@ public class Filters implements PlugInFilter {
 		imp.getCalibration().disableDensityCalibration();
 		ImageStatistics stats = new StackStatistics(imp);
 		ImageStack stack = imp.getStack();
-		int nslices = stack.size();
+		int nslices = stack.getSize();
 		int min=(int)stats.min, range=(int)(stats.max-stats.min);
 		int n = imp.getWidth()*imp.getHeight();
 		for (int slice=1; slice<=nslices; slice++) {

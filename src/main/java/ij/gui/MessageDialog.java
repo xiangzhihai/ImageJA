@@ -1,5 +1,5 @@
 package ij.gui;
-import ij.*;
+import ij.IJ;
 import java.awt.*;
 import java.awt.event.*;
 
@@ -14,21 +14,8 @@ public class MessageDialog extends Dialog implements ActionListener, KeyListener
 		super(parent, title, true);
 		setLayout(new BorderLayout());
 		if (message==null) message = "";
-		Font font = null;
-		double scale = Prefs.getGuiScale();
-		if (scale>1.0) {
-			font = getFont();
-			if (font!=null)
-				font = font.deriveFont((float)(font.getSize()*scale));
-			else
-				font = new Font("SansSerif", Font.PLAIN, (int)(12*scale));
-			setFont(font);
-		}
 		label = new MultiLineLabel(message);
-		if (font!=null)
-			label.setFont(font);
-		else if (!IJ.isLinux())
-			label.setFont(new Font("SansSerif", Font.PLAIN, 14));
+		if (!IJ.isLinux()) label.setFont(new Font("SansSerif", Font.PLAIN, 14));
 		Panel panel = new Panel();
 		panel.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 15));
 		panel.add(label);
@@ -43,7 +30,7 @@ public class MessageDialog extends Dialog implements ActionListener, KeyListener
 		if (ij.IJ.isMacintosh())
 			setResizable(false);
 		pack();
-		GUI.centerOnImageJScreen(this);
+		GUI.center(this);
 		addWindowListener(this);
 		show();
 	}
