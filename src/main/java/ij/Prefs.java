@@ -183,12 +183,15 @@ public class Prefs {
 	/** Dialog "Cancel" button is on right on Linux */
 	public static boolean dialogCancelButtonOnRight;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	/** Support TRANSFORM Undo in macros */
 	public static boolean supportMacroUndo;
 	/** Use NonBlockingGenericDialogs in filters */	
 	public static boolean nonBlockingFilterDialogs;
 	//Save location of moved image windows */	
 	//public static boolean saveImageLocation = true;
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 

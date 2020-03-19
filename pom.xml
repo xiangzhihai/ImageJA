@@ -12,7 +12,11 @@
 	<groupId>net.imagej</groupId>
 	<artifactId>ij</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
 	<version>1.52u</version>
+=======
+	<version>1.52h</version>
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 	<version>1.52h</version>
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i

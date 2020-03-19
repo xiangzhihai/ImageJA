@@ -629,10 +629,13 @@ public class Line extends Roi {
 			case KeyEvent.VK_RIGHT: x2R+=inc; break;
 		}
 <<<<<<< HEAD
+<<<<<<< HEAD
 		grow(screenXD(x+x2R), screenYD(y+y2R));
 		notifyListeners(RoiListener.MOVED);
 		showStatus();
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		grow(ic.screenXD(x+x2R), ic.screenYD(y+y2R));
 	}
 	

@@ -382,6 +382,7 @@ public class Plot implements Cloneable {
 				auto[1] = true;
 			}
 <<<<<<< HEAD
+<<<<<<< HEAD
 			for (int i = 0; i < range.length; i++)
 				if (!auto[i])       // don't modify for limits that were set manually
 					enlargeRange[i] = 0;
@@ -389,6 +390,8 @@ public class Plot implements Cloneable {
 		}
 		System.arraycopy(range, 0, currentMinMax, 0, Math.min(range.length, currentMinMax.length));
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 			if ((auto[2] || auto[3]) && (bottom >= top)) {
 				bottom = extrema[2];
 				top = extrema[3];
@@ -424,6 +427,9 @@ public class Plot implements Cloneable {
 		}
 		defaultMinMax = range;//change pointer of defaultMinMax
 		enlargeRange = null;
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		ignoreForce2Grid = true;
 	}
@@ -974,6 +980,7 @@ public class Plot implements Cloneable {
 		if (plotDrawn) updateImage();
 	}
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 	/** Sets the label for the plot object nuber 'index' in the sequence they were added.
 	 *  With index=-1, sets the label for the last object added.
@@ -984,6 +991,9 @@ public class Plot implements Cloneable {
 		allPlotObjects.get(index).label = label;
 	}
 
+=======
+	
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 	
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
@@ -1184,6 +1194,7 @@ public class Plot implements Cloneable {
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	/** Get the data of the n-th Plot Object containing xy data in the sequence they were added
 	 *  (Other Plot Objects such as labels, arrows, lines, shapes and hidden PlotObjects are not counted).
 	 *	The array returned has elements [0] x data, [1] y data, [2] x error bars, [3] y error bars.
@@ -1204,6 +1215,10 @@ public class Plot implements Cloneable {
 
 	/** Gets an array with human-readable designations of the PlotObjects (curves, labels, ...)
 	 *	in the sequence they were added (the object passed with the constructor is first,
+=======
+	/** Get an array with human-readable designations of the PlotObjects (curves, labels, ...)
+	 *	in the sequence they were added (the object passed with the constructur is first,
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 	/** Get an array with human-readable designations of the PlotObjects (curves, labels, ...)
 	 *	in the sequence they were added (the object passed with the constructur is first,
@@ -1497,6 +1512,9 @@ public class Plot implements Cloneable {
 		if (stack!=null && stack.size()>1) {
 			stack.setBitDepth(grayscaleStack?8:24);
 			new ImagePlus("Plot Stack",stack).show();
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 			return null;
 		}
@@ -2184,8 +2202,12 @@ public class Plot implements Cloneable {
 	 */
 	void zoomOnRangeArrow(int arrowIndex) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 		if (arrowIndex < 0) return;
 		if (arrowIndex < 8) {//0..7 = arrows, 8 = Reset Range, 9 = Fit All, 10..13 = set single limit
+=======
+		if (arrowIndex < 8) {//0..7 = arrows, 8 = Reset Range
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 		if (arrowIndex < 8) {//0..7 = arrows, 8 = Reset Range
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
@@ -2210,6 +2232,7 @@ public class Plot implements Cloneable {
 			currentMinMax[axisIndex] = min;
 			currentMinMax[axisIndex + 1] = max;
 <<<<<<< HEAD
+<<<<<<< HEAD
 		} else if (arrowIndex == 8) {
 			setLimitsToDefaults(false);
 		} else if (arrowIndex == 9) {
@@ -2225,6 +2248,12 @@ public class Plot implements Cloneable {
 
 		if (arrowIndex == 8)
 			setLimitsToDefaults(false);
+=======
+		}
+
+		if (arrowIndex == 8)
+			setLimitsToDefaults(false);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		updateImage();
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	}
@@ -4121,6 +4150,7 @@ class PlotObject implements Cloneable, Serializable {
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	/** Converts old (pre-1.52i) type codes for the PlotObjects to the new ones, which can be used as masks */
 	void updateType() {
 		type = 1<<type;
@@ -4130,6 +4160,8 @@ class PlotObject implements Cloneable, Serializable {
 		String s = "PlotObject type="+type+" flags="+flags+" xV:"+(xValues==null ? "-":yValues.length)+" yV:"+(yValues==null ? "-":yValues.length)+" label="+label+" col="+color+" fSize="+fontSize+" ff="+fontFamily;
 		return s;
 	}
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 } // class PlotObject

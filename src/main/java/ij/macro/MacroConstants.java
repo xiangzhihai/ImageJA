@@ -87,7 +87,11 @@ public interface MacroConstants {
 		IS_KEY_DOWN=1041, GET_SLICE_NUMBER=1042, SCREEN_WIDTH=1043, SCREEN_HEIGHT=1044, CALIBRATE=1045,
 		ASIN=1046, ACOS=1047, ROI_MANAGER=1048, TOOL_ID=1049, IS=1050, GET_VALUE=1051, STACK=1052, MATCHES=1053,
 <<<<<<< HEAD
+<<<<<<< HEAD
 		GET_STRING_WIDTH=1054, FIT=1055, OVERLAY=1056, SELECTION_CONTAINS=1057, PLOT=1058, MATH=1059;
+=======
+		GET_STRING_WIDTH=1054, FIT=1055, OVERLAY=1056, SELECTION_CONTAINS=1057;
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 		GET_STRING_WIDTH=1054, FIT=1055, OVERLAY=1056, SELECTION_CONTAINS=1057;
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
@@ -100,7 +104,11 @@ public interface MacroConstants {
 		"isKeyDown", "getSliceNumber", "screenWidth", "screenHeight", "calibrate",
 		"asin", "acos", "roiManager", "toolID", "is", "getValue", "Stack", "matches",
 <<<<<<< HEAD
+<<<<<<< HEAD
 		"getStringWidth", "Fit", "Overlay", "selectionContains", "Plot", "Math"};
+=======
+		"getStringWidth", "Fit", "Overlay", "selectionContains"};
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 		"getStringWidth", "Fit", "Overlay", "selectionContains"};
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
@@ -113,7 +121,11 @@ public interface MacroConstants {
 		IS_KEY_DOWN, GET_SLICE_NUMBER, SCREEN_WIDTH, SCREEN_HEIGHT, CALIBRATE,
 		ASIN, ACOS, ROI_MANAGER, TOOL_ID, IS, GET_VALUE, STACK, MATCHES,
 <<<<<<< HEAD
+<<<<<<< HEAD
 		GET_STRING_WIDTH, FIT, OVERLAY, SELECTION_CONTAINS, PLOT, MATH};
+=======
+		GET_STRING_WIDTH, FIT, OVERLAY, SELECTION_CONTAINS};
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 		GET_STRING_WIDTH, FIT, OVERLAY, SELECTION_CONTAINS};
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i

@@ -1626,12 +1626,18 @@ FocusListener, ItemListener, KeyListener, AdjustmentListener, WindowListener {
 
 	void showHelp() {
 <<<<<<< HEAD
+<<<<<<< HEAD
 		if (helpURL.startsWith("<html>")) {
 			if (this instanceof NonBlockingGenericDialog)
 				new HTMLDialog("", helpURL, false); // non blocking
 			else
 				new HTMLDialog(this, "", helpURL); //modal
 		} else {
+=======
+		if (helpURL.startsWith("<html>"))
+			new HTMLDialog(this, "", helpURL);
+		else {
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 		if (helpURL.startsWith("<html>"))
 			new HTMLDialog(this, "", helpURL);

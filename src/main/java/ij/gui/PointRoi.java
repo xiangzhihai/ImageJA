@@ -16,6 +16,7 @@ import java.awt.geom.*;
 /** This class represents a collection of points. */
 public class PointRoi extends PolygonRoi {
 <<<<<<< HEAD
+<<<<<<< HEAD
 	public static final String[] sizes = {"Tiny", "Small", "Medium", "Large", "Extra Large", "XXL", "XXXL"};
 	public static final String[] types = {"Hybrid", "Cross", "Dot", "Circle"};
 	public static final int HYBRID=0, CROSS=1, CROSSHAIR=1, DOT=2, CIRCLE=3;
@@ -24,6 +25,8 @@ public class PointRoi extends PolygonRoi {
 	private static final String CROSS_COLOR_KEY = "point.cross.color";
 	private static final int TINY=1, SMALL=3, MEDIUM=5, LARGE=7, EXTRA_LARGE=11, XXL=17, XXXL=25;
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	public static final String[] sizes = {"Tiny", "Small", "Medium", "Large", "Extra Large"};
 	public static final String[] types = {"Hybrid", "Crosshair", "Dot", "Circle"};
 	private static final String TYPE_KEY = "point.type";
@@ -31,6 +34,9 @@ public class PointRoi extends PolygonRoi {
 	private static final String CROSS_COLOR_KEY = "point.cross.color";
 	private static final int TINY=1, SMALL=3, MEDIUM=5, LARGE=7, EXTRA_LARGE=11;
 	private static final int HYBRID=0, CROSSHAIR=1, DOT=2, CIRCLE=3;
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	private static final BasicStroke twoPixelsWide = new BasicStroke(2);
 	private static final BasicStroke threePixelsWide = new BasicStroke(3);
@@ -59,9 +65,13 @@ public class PointRoi extends PolygonRoi {
 	private boolean promptBeforeDeletingCalled;
 	private int nMarkers;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	private boolean addToOverlay;
 	public static PointRoi savedPoints;
 		
+=======
+	
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 	
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
@@ -105,6 +115,7 @@ public class PointRoi extends PolygonRoi {
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	/** Creates a new PointRoi using the specified coordinates and options. */
 	public PointRoi(double ox, double oy, String options) {
 		super(makeXorYArray(ox, null, false), makeXorYArray(oy, null, true), 1, POINT);
@@ -113,6 +124,8 @@ public class PointRoi extends PolygonRoi {
 		setOptions(options);
 	}
 
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	/** Creates a new PointRoi using the specified offscreen int coordinates. */
@@ -149,6 +162,7 @@ public class PointRoi extends PolygonRoi {
 		incrementCounter(imp);
 		enlargeArrays(50);
 <<<<<<< HEAD
+<<<<<<< HEAD
 		if (Recorder.record) {
 			String add = Prefs.pointAddToOverlay?" add":"";
 			String options = sizes[convertSizeToIndex(size)]+" "+Colors.colorToString(getColor())+" "+types[type]+add;
@@ -174,6 +188,10 @@ public class PointRoi extends PolygonRoi {
 		else if (options.contains("circle")) type=CIRCLE;
 		setStrokeColor(Colors.getColor(options,Roi.getColor()));
 		addToOverlay =  options.contains("add");
+=======
+		if (Recorder.record && !Recorder.scriptMode()) 
+			Recorder.record("makePoint", x, y);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 		if (Recorder.record && !Recorder.scriptMode()) 
 			Recorder.record("makePoint", x, y);
@@ -631,11 +649,14 @@ public class PointRoi extends PolygonRoi {
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	/** Returns an array containing for each point:
 	 *  The counter number (0-100) in the lower 8 bits, and the slice number
 	 *  (or 0, if the point appears on all slices) in the higher 24 bits.
 	 *  Used when writing a Roi to file (RoiEncoder) */
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	public int getCount(int counter) {
 		if (counter==0 && counters==null)
 			return nPoints;
@@ -651,6 +672,9 @@ public class PointRoi extends PolygonRoi {
 			return counters[index];
 	}
 
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	public int[] getCounters() {
 		if (nPoints>65535)

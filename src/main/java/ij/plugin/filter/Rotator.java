@@ -113,8 +113,13 @@ public class Rotator implements ExtendedPlugInFilter, DialogListener {
 		}
 		gd = new GenericDialog("Rotate");
 <<<<<<< HEAD
+<<<<<<< HEAD
 		gd.addSlider("Angle:", -90, 90, angle, 0.1);
 		gd.addNumericField("Grid lines:", gridLines, 0);
+=======
+		gd.addNumericField("Angle (degrees):", angle, (int)angle==angle?1:2);
+		gd.addNumericField("Grid Lines:", gridLines, 0);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 		gd.addNumericField("Angle (degrees):", angle, (int)angle==angle?1:2);
 		gd.addNumericField("Grid Lines:", gridLines, 0);

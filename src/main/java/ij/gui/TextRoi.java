@@ -683,6 +683,7 @@ public class TextRoi extends Roi {
 		this.previousRoi = previousRoi;
 	}
 <<<<<<< HEAD
+<<<<<<< HEAD
 	
 	/** @deprecated Replaced by getDefaultFontName */
 	public static String getFont() {
@@ -705,6 +706,8 @@ public class TextRoi extends Roi {
 		updateBounds();
 	}
 
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
         

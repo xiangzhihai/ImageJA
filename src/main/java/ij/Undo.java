@@ -52,10 +52,15 @@ public class Undo {
 			calCopy = (Calibration)imp.getCalibration().clone();
 		} else if (what==TRANSFORM) {	
 <<<<<<< HEAD
+<<<<<<< HEAD
 			if ((!IJ.macroRunning()||Prefs.supportMacroUndo) && (imp.getStackSize()==1||imp.getDisplayMode()==IJ.COMPOSITE) && imp.getSizeInBytes()<209715200)
 				impCopy = imp.duplicate();
 			else
 				reset();
+=======
+			if (!IJ.macroRunning())
+				impCopy = new ImagePlus(imp.getTitle(), imp.getProcessor().duplicate());
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 			if (!IJ.macroRunning())
 				impCopy = new ImagePlus(imp.getTitle(), imp.getProcessor().duplicate());
@@ -100,8 +105,11 @@ public class Undo {
 		roiCopy = null;
 		lutCopy = null;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	}	
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		//if (IJ.debugMode) IJ.log("Undo.reset");
 	}
 	

@@ -1862,6 +1862,7 @@ public class Interpreter implements MacroConstants {
 						error("Index ("+index+") out of 0-"+(array.length-1)+" range");
 					str = array[index].getString();
 <<<<<<< HEAD
+<<<<<<< HEAD
 					int next2 = nextToken();			
 					if (str!=null) {
 						if (next2=='.')
@@ -1879,6 +1880,8 @@ public class Interpreter implements MacroConstants {
 						str = runStringFunction(v.getString());
 				} else {
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 					if (str==null) {
 						pc = savePC-1;
 						getToken();

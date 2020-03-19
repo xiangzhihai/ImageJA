@@ -1115,6 +1115,7 @@ public class ImagePlus implements ImageObserver, Measurements, Cloneable {
     	return height;
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     /** Returns the size of this image in bytes. */
     public double getSizeInBytes() {
@@ -1128,6 +1129,9 @@ public class ImagePlus implements ImageObserver, Measurements, Cloneable {
     	return size;
 	}
 
+=======
+    
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
     
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
@@ -2260,11 +2264,15 @@ public class ImagePlus implements ImageObserver, Measurements, Cloneable {
 	/** Returns a copy of this image or stack.
 =======
 	/** Returns a copy of this image or stack, cropped if there is an ROI.
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	* @see #crop
 	* @see ij.plugin.Duplicator#run
 	*/
 	public ImagePlus duplicate() {
+<<<<<<< HEAD
 <<<<<<< HEAD
 		Roi roi = getRoi();
 		deleteRoi();
@@ -2292,6 +2300,14 @@ public class ImagePlus implements ImageObserver, Measurements, Cloneable {
 	/** Returns a copy this image or stack slice, cropped if there is an ROI.
 	 * @see #duplicate
 	 * @see ij.plugin.Duplicator#crop
+=======
+		return (new Duplicator()).run(this);
+	}
+
+	/** Returns a copy this image or stack slice, cropped if there is an ROI.
+	* @see #duplicate
+	* @see ij.plugin.Duplicator#crop
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 		return (new Duplicator()).run(this);
 	}

@@ -40,6 +40,7 @@ public class PlotContentsDialog implements DialogListener {
 	private final static boolean[] COLUMN_ALLOW_NONE = new boolean[] {true, false, true, true}; //y data cannot be null
 	private ResultsTable[] allTables;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	private String[]      allTableNames;
 	private static String previousTableName;
 	private static int[]  previousColumns = new int[]{1, 1, 0, 0}; //must be N_COLUMNS elements
@@ -53,11 +54,16 @@ public class PlotContentsDialog implements DialogListener {
 	private static String lastFitFunction = CurveFitter.fitList[0];
 	private String        curveFitterStatusString;
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	private String[] allTableNames;
 	private static ResultsTable previousTable;
 	private static int[] previousColumns = new int[]{1, 1, 0, 0}; //must be N_COLUMNS elements
 	private static int defaultTableIndex;
 	private static int[] defaultColumnIndex = new int[N_COLUMNS];
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	private static String previousColor="blue", previousColor2="#a0a0ff", previousSymbol="Circle";
 	private static double previousLineWidth = 1;

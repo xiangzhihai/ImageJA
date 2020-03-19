@@ -184,6 +184,9 @@ public class PlotDialog implements DialogListener {
 			currentMinMax[1] = linXMax;
 			currentMinMax[2] = linYMin;
 			currentMinMax[3] = linYMax;
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 
 		if (dialogType == AXIS_OPTIONS || dialogType == X_AXIS || dialogType == Y_AXIS) {

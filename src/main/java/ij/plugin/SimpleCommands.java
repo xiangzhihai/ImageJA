@@ -49,6 +49,7 @@ public class SimpleCommands implements PlugIn {
 		else if (arg.equals("opencp"))
 			openControlPanel();
 <<<<<<< HEAD
+<<<<<<< HEAD
 		else if (arg.equals("magic"))
 			installMagicMontageTools();
 		else if (arg.equals("interactive"))
@@ -57,6 +58,8 @@ public class SimpleCommands implements PlugIn {
 			showDirectory(arg.replace("showdir", ""));
 		else if (arg.equals("measure"))
 			measureStack();
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	}
@@ -200,6 +203,7 @@ public class SimpleCommands implements PlugIn {
 			IJ.URL+"/docs/install/osx.html#randomization");
 	}
 <<<<<<< HEAD
+<<<<<<< HEAD
 	
 	private void installMagicMontageTools() {
 		String name = "MagicMontageTools.txt";
@@ -265,6 +269,8 @@ public class SimpleCommands implements PlugIn {
 	}
 
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 
 		
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i

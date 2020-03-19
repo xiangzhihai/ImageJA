@@ -79,6 +79,9 @@ public class Functions implements MacroConstants, Measurements {
 <<<<<<< HEAD
 =======
 	int lineWidth = 1;
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	boolean expandableArrays;
 	int plotWidth;
@@ -899,6 +902,7 @@ public class Functions implements MacroConstants, Measurements {
 		if (defaultIP==null) {
 			defaultIP = getImage().getProcessor();
 <<<<<<< HEAD
+<<<<<<< HEAD
 			if (globalLineWidth>0)
 				defaultIP.setLineWidth(globalLineWidth);
 			if (globalColor!=null)
@@ -908,6 +912,8 @@ public class Functions implements MacroConstants, Measurements {
 			else
 				defaultIP.setColor(Toolbar.getForegroundColor());
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 			if (lineWidth!=1)
 				defaultIP.setLineWidth(lineWidth);
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
@@ -2119,6 +2125,7 @@ public class Functions implements MacroConstants, Measurements {
 				roi = new Line(xcoord[0], ycoord[0], xcoord[1], ycoord[1]);
 		} else if (roiType==Roi.POINT) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 			if (type!=null && !type.equals("point")) {
 				if (!floatCoordinates) {
 					xfcoord = new float[n];
@@ -2130,6 +2137,9 @@ public class Functions implements MacroConstants, Measurements {
 				}
 				roi = new PointRoi(xfcoord, yfcoord, type);
 			} else if (floatCoordinates)
+=======
+			if (floatCoordinates)
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 			if (floatCoordinates)
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
@@ -2170,9 +2180,14 @@ public class Functions implements MacroConstants, Measurements {
 			return;
 		} else if (name.equals("showValues")) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 			return showPlotValues(/*useLabels=*/false);
 		} else if (name.equals("showValuesWithLabels")) {
 			return showPlotValues(/*useLabels=*/true);
+=======
+			showPlotValues();
+			return;
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 			showPlotValues();
 			return;
@@ -2256,6 +2271,7 @@ public class Functions implements MacroConstants, Measurements {
 			return;
 		} else if (name.equals("getFrameBounds")) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 			return getPlotFrameBounds(currentPlot);
 		} else if (name.equals("objectCount")||name.equals("getNumObjects")) {
 			return currentPlot.getNumPlotObjects();
@@ -2265,6 +2281,10 @@ public class Functions implements MacroConstants, Measurements {
 			return replacePlot(currentPlot);
 		} else if (name.equals("addText") || name.equals("drawLabel")) {
 			return addPlotText(currentPlot);
+=======
+			getPlotFrameBounds(currentPlot);
+			return;
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 			getPlotFrameBounds(currentPlot);
 			return;
@@ -2296,8 +2316,13 @@ public class Functions implements MacroConstants, Measurements {
 			return;
 		} else if (name.equals("drawGrid")) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 			plot.drawShapes("redraw_grid", null);
 			return Double.NaN;
+=======
+			plot.drawShapes("redraw_grid", null);	
+			return;
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 			plot.drawShapes("redraw_grid", null);	
 			return;
@@ -2337,6 +2362,9 @@ public class Functions implements MacroConstants, Measurements {
 				arrD[i] = arrV[i].getValue();		
 			plot.addHistogram(arrD, binWidth, binCenter);			
 			return;	
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		} else if (name.equals("appendToStack")) {
 			plot.appendToStack();
@@ -2382,7 +2410,11 @@ public class Functions implements MacroConstants, Measurements {
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	double showPlotValues(boolean useLabels) {
+=======
+	void showPlotValues() {
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 	void showPlotValues() {
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
@@ -2413,6 +2445,9 @@ public class Functions implements MacroConstants, Measurements {
 		PlotWindow pw = (PlotWindow)win;
 		ResultsTable rt = pw.getResultsTable();
 		rt.show(title);
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	}
 
@@ -2546,8 +2581,13 @@ public class Functions implements MacroConstants, Measurements {
 		plot.drawShapes(type, shapeData);
 	}
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 	double setPlotColor(Plot plot) {
+=======
+	
+	void setPlotColor(Plot plot) {
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 	
 	void setPlotColor(Plot plot) {
@@ -2671,10 +2711,13 @@ public class Functions implements MacroConstants, Measurements {
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	double addToPlot(Plot currentPlot) {
 		String shape = getFirstString();
 		int what = Plot.toShape(shape);
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	void addToPlot(int what, String shape) {
 		boolean errorBars = false;
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
@@ -2703,6 +2746,7 @@ public class Functions implements MacroConstants, Measurements {
 			plot.addErrorBars(y);
 		else if (what==-2)
 <<<<<<< HEAD
+<<<<<<< HEAD
 			currentPlot.addHorizontalErrorBars(y);
 		else if (errorBars != null)
 			currentPlot.addPoints(x, y, errorBars, what);
@@ -2729,6 +2773,15 @@ public class Functions implements MacroConstants, Measurements {
 		plot.replace(index, shape, x, y);
 		return Double.NaN;
 =======
+			plot.addPoints(x, y, what);
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
+			plot.addHorizontalErrorBars(y);
+		else if (errorBars)
+			plot.addPoints(x, y, e, what);
+		else if (what==Plot.CUSTOM)
+			plot.add(shape, x, y);
+		else
 			plot.addPoints(x, y, what);
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	}
@@ -3319,11 +3372,14 @@ public class Functions implements MacroConstants, Measurements {
 								((ColorPicker) thisWin).close();
 							}
 <<<<<<< HEAD
+<<<<<<< HEAD
 						}
 						if (thisWin instanceof ThresholdAdjuster) {//Threshold
 							if (pattern.equalsIgnoreCase("Threshold")) {
 								((ThresholdAdjuster) thisWin).close();
 							}
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 						}
@@ -6859,9 +6915,15 @@ public class Functions implements MacroConstants, Measurements {
 			overlay = offscreenOverlay;
 		}
 <<<<<<< HEAD
+<<<<<<< HEAD
 		if (globalColor!=null)
 			roi.setStrokeColor(globalColor);
 		roi.setStrokeWidth(getProcessor().getLineWidth());
+=======
+		if (defaultColor!=null)
+			roi.setStrokeColor(defaultColor);
+		roi.setLineWidth(getProcessor().getLineWidth());
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 		if (defaultColor!=null)
 			roi.setStrokeColor(defaultColor);
@@ -6957,11 +7019,15 @@ public class Functions implements MacroConstants, Measurements {
 			return getAllHeadings();
 		else if (name.equals("showRowNumbers"))
 <<<<<<< HEAD
+<<<<<<< HEAD
 			return showRowNumbers(true);
 		else if (name.equals("showRowIndexes"))
 			return showRowNumbers(false);
 		else if (name.equals("sort"))
 			return sortTable();
+=======
+			return showRowNumbers();
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 			return showRowNumbers();
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
@@ -7212,6 +7278,7 @@ public class Functions implements MacroConstants, Measurements {
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	private Variable sortTable() {
 		String column = getFirstString();
 		ResultsTable rt = getResultsTable(getTitle());
@@ -7224,6 +7291,8 @@ public class Functions implements MacroConstants, Measurements {
 		return null;
 	}
 
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 =======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	private Variable saveTable() {

@@ -71,12 +71,15 @@ public class RoiManager extends PlugInFrame implements ActionListener, ItemListe
 	private boolean recordShowAll = true;
 	private boolean allowDuplicates;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	private double translateX = 10.0;
 	private double translateY = 10.0;
 	private static String errorMessage;
 
 
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 	/** Opens the "ROI Manager" window, or activates it if it is already open.

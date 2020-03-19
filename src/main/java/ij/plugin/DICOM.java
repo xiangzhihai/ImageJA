@@ -112,11 +112,14 @@ public class DICOM extends ImagePlus implements PlugIn {
 			FileOpener fo = new FileOpener(fi);
 			ImagePlus imp = fo.openImage();
 <<<<<<< HEAD
+<<<<<<< HEAD
 			boolean openAsFloat = (dd.rescaleSlope!=1.0&&!Prefs.ignoreRescaleSlope) || Prefs.openDicomsAsFloat;		
 			String options = Macro.getOptions();
 			if (openAsFloat) {
 				IJ.run(imp, "32-bit", "");
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 			ImageProcessor ip = imp.getProcessor();
 			if (Prefs.openDicomsAsFloat) {
 				ip = ip.convertToFloat();

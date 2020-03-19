@@ -108,6 +108,7 @@ public class Colors implements PlugIn, ItemListener {
 		name = name.toLowerCase(Locale.US);
 		Color c = defaultColor;
 <<<<<<< HEAD
+<<<<<<< HEAD
 		if (name.contains(colors[7])) c = Color.black;
 		else if (name.contains(colors[8])) c = Color.white;
 		else if (name.contains(colors[0])) c = Color.red;
@@ -122,6 +123,8 @@ public class Colors implements PlugIn, ItemListener {
 		else if (name.contains(colors[11])) c = Color.darkGray;
 		else if (name.contains(colors[12])) c = Color.pink;
 =======
+=======
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		if (name.equals(colors[0])) c = Color.red;
 		else if (name.equals(colors[1])) c = Color.green;
 		else if (name.equals(colors[2])) c = Color.blue;
@@ -132,6 +135,9 @@ public class Colors implements PlugIn, ItemListener {
 		else if (name.equals(colors[7])) c = Color.black;
 		else if (name.equals(colors[8])) c = Color.white;
 		else if (name.equals(colors[9])) c = Color.gray;
+<<<<<<< HEAD
+>>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
+=======
 >>>>>>> parent of 173a8a33... Synchronize with ImageJ 1.52i
 		return c;
 	}
