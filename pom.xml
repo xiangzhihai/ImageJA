@@ -13,7 +13,7 @@
 	</parent>
 
 	<groupId>net.imagej</groupId>
-	<artifactId>ij</artifactId>
+	<artifactId>zhihai</artifactId>
 	<version>1.52i</version>
 
 	<name>ImageJ</name>
