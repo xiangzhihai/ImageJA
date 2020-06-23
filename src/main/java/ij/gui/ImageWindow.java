@@ -720,3 +720,4 @@ public class ImageWindow extends Frame implements FocusListener, WindowListener,
 	}
 
 } //class ImageWindow
+

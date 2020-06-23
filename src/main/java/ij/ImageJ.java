@@ -296,7 +296,7 @@ public class ImageJ extends Frame implements ActionListener,
 		return new Point(ijX, maxBounds.y);
 	}
 
-	public void showStatus(String s) {
+	void showStatus(String s) {
 		statusLine.setText(s);
 	}
 
